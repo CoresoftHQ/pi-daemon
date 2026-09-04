@@ -136,8 +136,9 @@ exact version and cutting a daemon release for each pi release. Driving the CLI 
 documented protocol, the pi the operator already installed, and the credentials they already
 authenticated — the daemon never handles a provider key at all.
 
-**What this costs, stated plainly.** A process per active session — call it 150–250 MB and a
-second of spawn latency, bounded by eviction and a session cap. Process supervision, and
+**What this costs, stated plainly.** A process per active session — measured in M0 at
+~100 MB RSS and 0.5–1 s of warm spawn latency (the first start after install can take ~30 s,
+so the daemon warms a runner at startup), bounded by eviction and a session cap. Process supervision, and
 tree-kill of a runner *and its tool children* on three platforms (§9). No typed events: the
 daemon parses JSONL, and must do so with a hand-rolled splitter, because pi's docs warn that
 Node's `readline` is not protocol-compliant — it splits on `U+2028`/`U+2029`, which are legal
@@ -169,6 +170,9 @@ needs the session directory —
 `~/.pi/agent/sessions/--<path>--/<timestamp>_<uuid>.jsonl`, documented and keyed by working
 directory, which conveniently means "sessions in this workspace" is a directory read. The daemon
 reads only file names and each file's header line: id, name, timestamps. Not the transcript.
+The daemon uses pi's **default** store deliberately — a `--session-dir` of its own would give a
+flat layout without the `--<path>--` key (M0), but would also hide daemon sessions from a
+terminal `pi`, which §3 promises not to do.
 
 One caveat on "the file is the source of truth": pi's session storage is pluggable —
 `@earendil-works/pi-session-backend-sqlite-node` and `pi-storage-sqlite-node` exist — so JSONL
@@ -184,7 +188,10 @@ below. Node **>= 22.19.0**, ESM, TypeScript.
 
 **One native addon, behind a capability.** Terminals (§5.5) need a pseudo-terminal, and there is
 no pure-JavaScript way to open one. The daemon uses `node-pty`, whose install tries a prebuilt
-binary first and compiles only if none matches — the same dependency Orca ships, prebuilt. It is
+binary first and compiles only if none matches — the same dependency Orca ships, prebuilt. M0
+found that upstream 1.1.0 ships prebuilds for Windows and macOS only; **on Linux it compiles**,
+so honouring the guarantee below means shipping Linux prebuilds ourselves, using a multiarch
+fork, or moving the PTY into the sidecar — a decision M1 makes before M7 depends on it. It is
 loaded lazily and only by `terminals`; if the addon is missing or fails to load, the daemon runs
 without it and `capabilities.absent` lists `terminals`. So the install guarantee is narrower than
 "no native code" and is stated exactly: **no compile step on the three mainstream platforms, and
@@ -901,12 +908,14 @@ PTY addon did not load, and `files.write` moves there when the operator has swit
      The single-use ticket pattern (§6.4) is the natural shape: the client asks the destination
      for a transfer ticket and hands it to the source. Nothing in §6 prevents a daemon being a
      client of another daemon.
-   - *Two things to verify before promising "context intact"*, both cheap, both in plan M0 as
-     probes rather than gates: pi keys its session directory by working directory
-     (`--<path>--`), so a moved session must be re-homed under the destination path and pi must
-     accept a file whose recorded `cwd` differs from where it now lives; and linked git worktrees
-     store absolute paths to their main repository, so a worktree moves either with its project
-     or by becoming a fresh worktree of the destination's clone.
+   - *"Context intact" is achievable, and M0 showed how.* Copying a session file and opening
+     it by explicit path (`--session <file>`) from a different directory works: same id, full
+     history, regardless of the recorded `cwd`. Opening by *id* from a different directory
+     instead triggers pi's own "Session found in different project — fork into current
+     directory?" prompt, which RPC mode cannot answer — so a move is always file plus path,
+     never id alone. Still open: linked git worktrees store absolute paths to their main
+     repository, so a worktree moves either with its project or by becoming a fresh worktree of
+     the destination's clone.
    - *Storage format is not the lever.* Sync between daemons is easy because pi's sessions are an
      append-only log of immutable entries with `id` / `parentId` — a union by id merges two
      copies with no conflicts — and that holds for JSONL and for pi's SQLite backend alike. At

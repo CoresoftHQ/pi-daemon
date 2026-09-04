@@ -3,7 +3,8 @@
 Companion to [the specification](spec.md). Ten milestones, each independently demonstrable, each
 with acceptance criteria that are testable rather than aspirational.
 
-**Awaiting approval. No implementation has started.**
+**Status (2026-09-04): approved; M0 complete — GO. M1 is next.** Results in
+[`spike/README.md`](../spike/README.md).
 
 ---
 
@@ -40,6 +41,13 @@ rather than a retrofit through moving code.
 ## M0 — Feasibility, in throwaway code
 
 **Purpose.** Answer both questions in the sequencing note before committing to anything.
+
+**Result: GO** (2026-09-04, Windows, pi 0.84.4). Items 1–7 and 9 verified; item 8 verified
+headless-to-headless, browser check pending. Measured: ~100 MB RSS per runner, 0.5–1 s warm
+spawn (cold first start ~30 s), ~450 ms rehydrate, first token 1.2–2.9 s. Two findings change
+later milestones: upstream `node-pty` ships **no Linux prebuild**, so M1 must pick between our
+own prebuilds, a multiarch fork, or the sidecar; and moving a session works by explicit file
+path, not by id (spec §11.9). Full table in `spike/README.md`.
 
 **Build.** One scratch directory, nothing published, nothing structured.
 

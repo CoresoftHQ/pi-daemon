@@ -1,0 +1,16 @@
+{
+  "name": "pi-daemon-spike",
+  "private": true,
+  "type": "module",
+  "description": "M0 feasibility spike. Throwaway. Nothing here ships.",
+  "engines": { "node": ">=22.19.0" },
+  "dependencies": {
+    "@earendil-works/pi-protocol": "0.84.4",
+    "@earendil-works/pi-client": "0.84.4",
+    "@earendil-works/pi-coding-agent": "0.84.4",
+    "@xterm/headless": "^6.0.0",
+    "@xterm/addon-serialize": "^0.14.0",
+    "node-pty": "1.1.0",
+    "ws": "^8.18.0"
+  }
+}
