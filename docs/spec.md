@@ -24,8 +24,9 @@ Restated from the brief, because everything below is justified against these and
    Files: tree, contents, diff, and add / update / delete / move, because an ADE that cannot show
    or change files is not usable. Groups: a logical grouping of projects and worktrees that is
    not folder-based, so a list of thirty things can be read. Terminals: ordinary interactive
-   shells in a workspace, as Orca has them. Command runs, schedules, push notifications, and
-   unread state are v2.
+   shells in a workspace, as Orca has them. Command runs, push notifications, and unread state
+   are v2. Scheduling is not a daemon concern at all: a schedule is a client — n8n, an ADE, a
+   cron job — calling the API at a time of its choosing (§11.10).
 8. **Tailnet-aware, token-authoritative.** Reachability is never authorisation.
 
 ### 1.1 What follows from requirement 2
@@ -858,7 +859,7 @@ anything, `seq` does.
   "piProtocol": { "version": 1, "maxFrameLength": 8388608 },
   "pi":         { "version": "0.84.4", "supported": ">=0.84.0 <0.86.0", "path": "detected" },
   "features":   ["dialogs", "worktrees", "groups", "files", "files.write", "diff", "terminals", "fork", "sse"],
-  "absent":     ["commandRuns", "schedules", "push", "containers", "turnResume", "terminalPersistence"],
+  "absent":     ["commandRuns", "push", "containers", "turnResume", "terminalPersistence"],
   "limits":     { "maxRunners": 8, "maxTerminals": 16, "scrollbackLines": 10000, "maxFileBytes": 4194304, "idleTimeoutMs": 1800000, "replayRing": 2000 }
 }
 ```
@@ -957,7 +958,8 @@ PTY addon did not load, and `files.write` moves there when the operator has swit
       that registers its own webhook. An MCP facade over `/v1` is the alternative route into
       n8n's AI Agent node and any other MCP client, and is thin enough to do as well.
 
-    One consequence worth acting on: with n8n as the orchestrator, the v2 *schedules* item is
-    probably not worth building — n8n is a better scheduler than the daemon would be. And one
-    reservation v1 must carry so v1.2 stays additive: turns need an id a workflow can correlate
-    on (§8).
+    Decided: **scheduling is a client matter, not a daemon matter.** The daemon never runs
+    anything on a timer; whatever wants a turn at 03:00 — n8n, an ADE, a cron job — calls the
+    API at 03:00. That keeps one less durable state machine out of the daemon and one less thing
+    to get right across three service managers. The one reservation v1 must carry so v1.2 stays
+    additive: turns need an id a workflow can correlate on (§8).
