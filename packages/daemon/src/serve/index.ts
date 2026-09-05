@@ -22,4 +22,4 @@ export {
 export type { ByteDuplex } from "./transport.ts";
 export { memoryPair } from "./transport.ts";
 export type { ResolvedWorkspace, WorkspaceResolver } from "./workspace-resolver.ts";
-export { singleRootResolver } from "./workspace-resolver.ts";
+export { registryResolver, singleRootResolver } from "./workspace-resolver.ts";

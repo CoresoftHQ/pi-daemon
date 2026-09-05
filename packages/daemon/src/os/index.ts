@@ -21,6 +21,7 @@ export {
   writeFileAtomicSync,
   writeJsonAtomicSync,
 } from "./fsx.ts";
+export { crockfordId, normaliseCrockford } from "./ids.ts";
 export { connectLocal, listenLocal, localEndpointPath } from "./ipc.ts";
 export type { AcquireLockOptions, Lock, LockInfo } from "./lock.ts";
 export { acquireLock, LockHeldError } from "./lock.ts";

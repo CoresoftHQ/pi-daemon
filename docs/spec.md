@@ -389,10 +389,13 @@ broad without being deep.
 | `GET /v1/devices` · `DELETE /v1/devices/:id` | — Owner only; revocation closes live connections |
 | `POST /v1/connect-tickets` | — Single-use ticket for a browser's Surface A upgrade |
 | `GET /v1/projects` · `GET /v1/workspaces` | Registry + git summary; `?group=<id>` or `?group=none` to filter |
+| `GET /v1/projects/:id` · `GET /v1/workspaces/:id` | One item; the project comes with its workspaces |
 | `PATCH /v1/projects/:id` · `PATCH /v1/workspaces/:id` | Set `groupIds`, and a display name |
+| `POST /v1/projects/:id/refresh` | Re-scan the repository's worktrees after a `git worktree add` in a terminal |
+| `GET /v1/workspaces/:id/sessions` · `GET /v1/sessions?workspace=<id>` | Sessions whose cwd is inside the workspace |
 | `GET /v1/groups` · `POST /v1/groups` · `PATCH /v1/groups/:id` · `DELETE /v1/groups/:id` | Groups (§3.1). Delete removes the grouping, never a member |
 | `GET /v1/groups/:id` | The group with its projects and workspaces expanded |
-| `POST /v1/workspaces` · `DELETE /v1/workspaces/:id` | Registration. Never deletes anything on disk |
+| `POST /v1/workspaces` · `DELETE /v1/workspaces/:id` | Registration, owner only. Never deletes anything on disk |
 | `POST /v1/projects/:id/worktrees` · `DELETE .../:workspaceId` | git worktree add / remove |
 | `GET /v1/workspaces/:id/status` | Branch, ahead/behind, dirty summary; watcher-invalidated cache |
 | `GET /v1/workspaces/:id/tree` | Directory listing under a relative path (§5.4) |
@@ -721,9 +724,10 @@ is started* rather than of what the agent asks for:
   than followed later.
 - The file routes (§5.4) apply the same canonicalisation to every request: the relative path is
   joined to the root, resolved through `realpath`, and refused unless the result is still inside
-  the root. `..`, absolute paths, drive-relative paths, and symlinks whose target leaves the tree
-  all fail the same check, with a `403` that names the rule and not the path. This is the one
-  place the daemon itself is the boundary, so it gets a dedicated test list (plan M6).
+  the root. `..`, absolute paths, drive-relative paths, UNC paths, null bytes and other control
+  or line-separator characters, and symlinks whose target leaves the tree all fail the same
+  check, with a `403` that names the rule and not the path. This is the one place the daemon
+  itself is the boundary, so it gets a dedicated test list (plan M6).
 
 Note what this does *not* do: it does not stop the agent from reading outside the workspace once
 `read` is enabled, because pi has no sandbox (§7.1). Confinement here bounds what the daemon

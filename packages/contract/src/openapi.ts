@@ -32,6 +32,28 @@ import {
   TreeResponse,
 } from "./requests.ts";
 import { SessionSnapshot, SessionSummary, TranscriptItem } from "./session.ts";
+import {
+  CreateWorktreeRequest,
+  DiffResponse,
+  FileTreeResponse,
+  FileWriteResponse,
+  GroupCreate,
+  GroupExpanded,
+  GroupList,
+  GroupPatch,
+  GroupResponse,
+  MkdirRequest,
+  MoveRequest,
+  ProjectList,
+  ProjectPatch,
+  ProjectResponse,
+  RegisterWorkspaceRequest,
+  RegisterWorkspaceResponse,
+  WorkspaceList,
+  WorkspacePatch,
+  WorkspaceResponse,
+  WorkspaceStatus,
+} from "./workspaces.ts";
 
 export const CONTRACT_VERSION = 1 as const;
 
@@ -71,7 +93,7 @@ function operation(op: Op) {
 
 const sessionId = { name: "id", in: "path", required: true, schema: { type: "string" } };
 
-/** The full document. Paths for M6 (workspaces, files, groups) and M7 (terminals) are added when built. */
+/** The full document. Paths for M7 (terminals) are added when built. */
 export function openApiDocument(info: { version: string } = { version: "0.1.0" }) {
   return {
     openapi: "3.1.0",
@@ -292,6 +314,185 @@ export function openApiDocument(info: { version: string } = { version: "0.1.0" }
           auth: "member",
           request: DialogRespondRequest,
           responses: { 200: DialogRespondResponse, 409: DialogConflict },
+        }),
+      },
+      "/v1/projects": {
+        get: operation({
+          summary: "Registered projects; ?group=<id> or ?group=none",
+          auth: "member",
+          responses: { 200: ProjectList },
+        }),
+      },
+      "/v1/projects/{id}": {
+        parameters: [sessionId],
+        get: operation({
+          summary: "A project with its workspaces",
+          auth: "member",
+          responses: { 200: ProjectResponse },
+        }),
+        patch: operation({
+          summary: "Rename, regroup, set the default base ref",
+          auth: "member",
+          request: ProjectPatch,
+          responses: { 200: ProjectResponse },
+        }),
+      },
+      "/v1/projects/{id}/refresh": {
+        parameters: [sessionId],
+        post: operation({
+          summary: "Re-scan the repository's worktrees",
+          auth: "member",
+          responses: { 200: WorkspaceList },
+        }),
+      },
+      "/v1/projects/{id}/worktrees": {
+        parameters: [sessionId],
+        post: operation({
+          summary: "git worktree add; the name is validated for every OS first",
+          auth: "member",
+          request: CreateWorktreeRequest,
+          responses: { 201: WorkspaceResponse },
+        }),
+      },
+      "/v1/projects/{id}/worktrees/{workspaceId}": {
+        parameters: [
+          sessionId,
+          { name: "workspaceId", in: "path", required: true, schema: { type: "string" } },
+        ],
+        delete: operation({
+          summary: "git worktree remove; refuses while attached unless ?force=1",
+          auth: "member",
+          responses: { 200: "empty" },
+        }),
+      },
+      "/v1/workspaces": {
+        get: operation({
+          summary: "Registered workspaces; ?group=, ?project=",
+          auth: "member",
+          responses: { 200: WorkspaceList },
+        }),
+        post: operation({
+          summary: "Register a directory: a repository yields a project and its worktrees",
+          auth: "owner",
+          request: RegisterWorkspaceRequest,
+          responses: { 201: RegisterWorkspaceResponse },
+        }),
+      },
+      "/v1/workspaces/{id}": {
+        parameters: [sessionId],
+        get: operation({ summary: "One workspace", auth: "member", responses: { 200: WorkspaceResponse } }),
+        patch: operation({
+          summary: "Rename or regroup",
+          auth: "member",
+          request: WorkspacePatch,
+          responses: { 200: WorkspaceResponse },
+        }),
+        delete: operation({
+          summary: "Deregister. Never deletes anything on disk",
+          auth: "owner",
+          responses: { 200: "empty" },
+        }),
+      },
+      "/v1/workspaces/{id}/status": {
+        parameters: [sessionId],
+        get: operation({
+          summary: "Branch, ahead/behind, dirty summary (watcher-invalidated cache)",
+          auth: "member",
+          responses: { 200: WorkspaceStatus },
+        }),
+      },
+      "/v1/workspaces/{id}/sessions": {
+        parameters: [sessionId],
+        get: operation({
+          summary: "Sessions whose cwd is inside this workspace",
+          auth: "member",
+          responses: { 200: SessionList },
+        }),
+      },
+      "/v1/workspaces/{id}/tree": {
+        parameters: [sessionId],
+        get: operation({
+          summary: "Directory listing. ?path=<rel>&depth=<n>&all=1&cursor=&limit=",
+          auth: "member",
+          responses: { 200: FileTreeResponse },
+        }),
+      },
+      "/v1/workspaces/{id}/file": {
+        parameters: [sessionId],
+        get: operation({
+          summary: "File bytes. ?path=<rel>; honours Range and If-None-Match; 413 above maxFileBytes",
+          auth: "member",
+          responses: { 200: "empty" },
+        }),
+        head: operation({
+          summary: "File metadata as headers (ETag, Content-Type, X-File-Mode, X-File-Size)",
+          auth: "member",
+          responses: { 200: "empty" },
+        }),
+        put: operation({
+          summary:
+            "Create or replace, byte for byte. If-Match required to replace; If-None-Match: * creates only; ?parents=1",
+          auth: "member",
+          responses: { 200: FileWriteResponse },
+        }),
+        delete: operation({
+          summary: "Delete. If-Match honoured; ?recursive=1 for directories; the root and .git are refused",
+          auth: "member",
+          responses: { 200: "empty" },
+        }),
+      },
+      "/v1/workspaces/{id}/diff": {
+        parameters: [sessionId],
+        get: operation({
+          summary: "Unified diff of the working tree against HEAD or ?base=, for ?path= or everything",
+          auth: "member",
+          responses: { 200: DiffResponse },
+        }),
+      },
+      "/v1/workspaces/{id}/mkdir": {
+        parameters: [sessionId],
+        post: operation({
+          summary: "Create a directory inside the workspace",
+          auth: "member",
+          request: MkdirRequest,
+          responses: { 201: "empty" },
+        }),
+      },
+      "/v1/workspaces/{id}/move": {
+        parameters: [sessionId],
+        post: operation({
+          summary: "Rename inside the workspace; both paths boundary-checked",
+          auth: "member",
+          request: MoveRequest,
+          responses: { 200: "empty" },
+        }),
+      },
+      "/v1/groups": {
+        get: operation({ summary: "All groups", auth: "member", responses: { 200: GroupList } }),
+        post: operation({
+          summary: "Create a group",
+          auth: "member",
+          request: GroupCreate,
+          responses: { 201: GroupResponse },
+        }),
+      },
+      "/v1/groups/{id}": {
+        parameters: [sessionId],
+        get: operation({
+          summary: "The group with its projects and workspaces expanded",
+          auth: "member",
+          responses: { 200: GroupExpanded },
+        }),
+        patch: operation({
+          summary: "Rename, recolour, reorder",
+          auth: "member",
+          request: GroupPatch,
+          responses: { 200: GroupResponse },
+        }),
+        delete: operation({
+          summary: "Delete the grouping; members stay registered",
+          auth: "member",
+          responses: { 200: "empty" },
         }),
       },
       "/v1/events": {

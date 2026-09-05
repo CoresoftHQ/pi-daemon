@@ -1,4 +1,4 @@
-// /v1 routes (spec §5.1) other than access (M4) and workspaces/files/terminals (M6, M7).
+// /v1 routes (spec §5.1) other than access (M4), workspaces/files (M6, in workspace-routes.ts) and terminals (M7).
 
 import type http from "node:http";
 import type { Capabilities } from "@coresoft-hq/pi-daemon-contract";
@@ -20,15 +20,20 @@ import type { SessionHost } from "../../sessions/host.ts";
 import { RunnerCapError, SessionLockedError, SessionNotFoundError } from "../../sessions/host.ts";
 import type { Session } from "../../sessions/session.ts";
 import { SessionBusyError, SessionNotLiveError } from "../../sessions/session.ts";
+import type { WorkspaceService } from "../../workspaces/service.ts";
 import type { WorkspaceResolver } from "../workspace-resolver.ts";
 import type { EventStreamOptions } from "./events.ts";
 import { handleEventSse } from "./events.ts";
 import { toJsonSnapshot, toJsonSummary } from "./json-encode.ts";
 import { body, HttpError, Router, sendJson } from "./router.ts";
+import { addWorkspaceRoutes } from "./workspace-routes.ts";
 
 export interface V1RoutesOptions {
   host: SessionHost;
   workspaces: WorkspaceResolver;
+  /** M6: projects, groups, worktrees, and the file surface. Absent means those routes are not served. */
+  workspaceService?: WorkspaceService | undefined;
+  maxFileBytes?: number | undefined;
   access: AccessControl;
   capabilities: () => Capabilities;
   version: string;
@@ -72,9 +77,18 @@ export function createV1Router(options: V1RoutesOptions): Router {
     sendJson(res, 200, options.capabilities()),
   );
 
-  router.add("GET", "/v1/sessions", { auth: "member" }, async ({ res }) =>
-    sendJson(res, 200, { sessions: host.list().map(toJsonSummary) }),
-  );
+  router.add("GET", "/v1/sessions", { auth: "member" }, async ({ res, url }) => {
+    const workspaceId = url.searchParams.get("workspace");
+    const all = host.list();
+    const sessions = workspaceId
+      ? all.filter(
+          (s) =>
+            s.workspaceId === workspaceId ||
+            options.workspaces.workspaceFor(s.cwd)?.workspaceId === workspaceId,
+        )
+      : all;
+    sendJson(res, 200, { sessions: sessions.map(toJsonSummary) });
+  });
 
   router.add("POST", "/v1/sessions", { auth: "member" }, async ({ req, res }) => {
     const b = await body(req, CreateSessionRequest);
@@ -224,6 +238,16 @@ export function createV1Router(options: V1RoutesOptions): Router {
   router.add("GET", "/v1/events/sse", { auth: "member" }, async ({ req, res }) =>
     handleEventSse(req, res, options.events),
   );
+
+  if (options.workspaceService) {
+    addWorkspaceRoutes(router, {
+      service: options.workspaceService,
+      resolver: options.workspaces,
+      host,
+      maxFileBytes: options.maxFileBytes,
+      log: options.log,
+    });
+  }
 
   return router;
 }

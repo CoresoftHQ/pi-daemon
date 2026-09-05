@@ -6,7 +6,7 @@ with acceptance criteria that are testable rather than aspirational.
 **Status (2026-09-05): approved; M0 complete — GO (results in
 [`spike/README.md`](../spike/README.md)); M1 complete, CI matrix green on the `develop` branch;
 M2 complete; M3 complete; M4 complete apart from its human security review and the manual
-browser-over-`tailscale cert` check; M5 complete. M6 is next.**
+browser-over-`tailscale cert` check; M5 complete; M6 complete. M7 is next.**
 
 ---
 
@@ -271,6 +271,37 @@ transcript UI, and M7 adds the terminal.
 
 **Purpose.** Make `pi-ade` possible: from "start a task" to "session in a clean tree", with the
 files visible.
+
+**Result (2026-09-05):** `workspaces/` — `git.ts` (argv-only git: repo membership, worktree
+list/add/remove, porcelain-v2 status, bounded diff, batched `check-ignore`), `registry.ts`
+(projects, workspaces, groups; random ids; atomic JSON; discovery of the main and every linked
+worktree at registration, a non-repository as a standalone workspace; worktree create with the
+portable-name check before git runs, remove with the attached refusal and `force`; `refresh`
+for worktrees added in a terminal; groups as flat many-to-many membership whose deletion
+deletes nothing), `files.ts` (the file surface: paged, ignore-aware `tree` with the depth cap;
+`stat`/`read` with sniffing, content-hash `ETag`, `Range`, and the size cap; atomic `write`
+with `If-Match` required to replace, `If-None-Match: *` to create, mode preserved; `remove`
+with the root/`.git` refusals and links removed not followed; `move` inside the tree), a
+**control-character rule** added to the boundary list (C0, DEL, U+2028/2029 are refused like
+`..`), `watch.ts` (one recursive watcher per workspace, `touch` adds listed directories when
+the platform fell back to polling), and `service.ts` (watchers → status-cache invalidation and
+`workspace.files_changed` with `origin: "external"`; the daemon's own writes echo with
+`origin: "api"` and the `deviceId`; the `files.write` switch). In `serve`: the registry-backed
+`cwd` resolver replacing M3's single-root stub, `workspace-routes.ts` for every M6 route in
+§5.1 plus `GET /v1/projects/:id`, `POST /v1/projects/:id/refresh`, `GET
+/v1/workspaces/:id/sessions`, and `?workspace=` on `GET /v1/sessions`; registration and
+deregistration are owner-only. Contract: `workspaces.ts` schemas, the four events in
+`EventPayloads`, and the OpenAPI paths. 17 new tests: the registry (discovery, validation before
+git, busy/force, groups, refresh), the file core (the named boundary list, symlinks in and out,
+case-variant paths, reads, writes, delete/move, paging), and the HTTP surface end to end
+including the write switch, the `api`/`external` events, and an external commit reaching
+`status` through the watcher with the cache TTL set to a minute so nothing else could.
+Scaled down from the acceptance text: the size-cap test uses 5 MB against a 4 MiB cap and the
+paging test 1,200 entries; no crash is injected between temp-write and rename (that is `os`'s
+atomic write); session enumeration is not benchmarked at 500 sessions; the Linux polling
+fallback is coded but CI's kernels watch recursively, so it is not exercised there. Per-
+workspace tool pinning is not a registry property — trust and tools stay pi's (§7), and the
+M2 spawn options remain the only place they are set.
 
 **Build.** Project and workspace registry with canonical paths and atomic persistence; groups
 (§3.1) as registry metadata with membership on the item, `?group=` filters on the list routes,

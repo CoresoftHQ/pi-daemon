@@ -78,7 +78,10 @@ test("device store: first device is owner, tokens verify, the file holds hashes 
   assert.equal(store.verify(`pid_NOPE00000000000_${"a".repeat(43)}`), null);
 
   const raw = readFileSync(file, "utf8");
-  assert.ok(!raw.includes(a.token.split("_")[2] ?? "!"), "the secret is never written");
+  // base64url secrets can contain "_", so take everything after the second separator
+  const secret = a.token.replace(/^pid_[^_]+_/, "");
+  assert.ok(secret.length >= 40, "parsed the whole secret");
+  assert.ok(!raw.includes(secret), "the secret is never written");
   assert.ok(raw.includes("secretHash"));
   if (platform !== "win32") assert.equal(statSync(file).mode & 0o777, 0o600);
 

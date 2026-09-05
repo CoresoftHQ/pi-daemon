@@ -5,3 +5,4 @@ export * from "./events.ts";
 export { CONTRACT_VERSION, openApiDocument } from "./openapi.ts";
 export * from "./requests.ts";
 export * from "./session.ts";
+export * from "./workspaces.ts";
