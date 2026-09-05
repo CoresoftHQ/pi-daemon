@@ -18,7 +18,7 @@
     "lint": "biome check .",
     "format": "biome format --write .",
     "build": "tsc -b packages/contract packages/daemon",
-    "verify": "npm run typecheck && npm run check:boundaries && npm test"
+    "verify": "npm run typecheck && npm run check:boundaries && npm run lint && npm test"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.2.0",

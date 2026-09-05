@@ -112,7 +112,7 @@ before(async () => {
 
   const code = pairing.issue().code;
   const r = await api("POST", "/v1/pair/redeem", { code, deviceName: "test", platform: "node" });
-  token = r.body?.token as string;
+  token = r.body.token as string;
 });
 after(async () => {
   protocol.closeAll();
@@ -193,7 +193,7 @@ test("health is open; capabilities needs a token; the redeemed token works", asy
   assert.equal((await api("GET", "/v1/capabilities", undefined, {}, false)).status, 401);
   const caps = await api("GET", "/v1/capabilities");
   assert.equal(caps.status, 200);
-  assert.equal((caps.body?.api as { version: number }).version, 1);
+  assert.equal((caps.body.api as { version: number }).version, 1);
 });
 
 test("OpenAPI is generated from the schemas and covers the routes", () => {
@@ -208,10 +208,10 @@ test("create a session by workspaceId; the snapshot validates against the contra
   assert.equal((await api("POST", "/v1/sessions", { workspaceId: "nope" })).status, 404);
   const bad = await api("POST", "/v1/sessions", { workspaceId: 42 });
   assert.equal(bad.status, 400);
-  assert.equal((bad.body?.error as { code: string }).code, "invalid_body");
+  assert.equal((bad.body.error as { code: string }).code, "invalid_body");
   const r = await api("POST", "/v1/sessions", { workspaceId: "default", name: "from-json" });
   assert.equal(r.status, 201);
-  const session = r.body?.session as Record<string, unknown>;
+  const session = r.body.session as Record<string, unknown>;
   assert.ok(
     Value.Check(SessionSnapshot, session),
     [...Value.Errors(SessionSnapshot, session)]
@@ -222,12 +222,12 @@ test("create a session by workspaceId; the snapshot validates against the contra
   assert.equal(session.workspaceId, "default");
   assert.ok(!("cwd" in session), "no path on the wire");
   const list = await api("GET", "/v1/sessions");
-  assert.ok((list.body?.sessions as Array<{ id: string }>).some((s) => s.id === session.id));
+  assert.ok((list.body.sessions as Array<{ id: string }>).some((s) => s.id === session.id));
 });
 
 test("prompt returns the runId; an Idempotency-Key replays the same answer; events carry the runId", async (t) => {
   const created = await api("POST", "/v1/sessions", { workspaceId: "default" });
-  const id = (created.body?.session as { id: string }).id;
+  const id = (created.body.session as { id: string }).id;
   const stream = streamUntil(t, `?since=0&scopes=session:${id}`, (es) =>
     es.some((e) => e.type === "session.phase" && (e.payload as { phase: string }).phase === "idle"),
   );
@@ -238,8 +238,8 @@ test("prompt returns the runId; an Idempotency-Key replays the same answer; even
     { "idempotency-key": "k1" },
   );
   assert.equal(first.status, 202);
-  assert.match(String(first.body?.runId), /^run_/);
-  assert.equal(first.body?.queued, false);
+  assert.match(String(first.body.runId), /^run_/);
+  assert.equal(first.body.queued, false);
   const replay = await api(
     "POST",
     `/v1/sessions/${id}/prompt`,
@@ -259,7 +259,7 @@ test("prompt returns the runId; an Idempotency-Key replays the same answer; even
     phases.map((p) => p.phase),
     ["turn", "idle"],
   );
-  assert.equal(phases[0]?.runId, first.body?.runId);
+  assert.equal(phases[0]?.runId, first.body.runId);
   assert.ok(events.some((e) => e.type === "transcript.item_finished"));
   const seqs = events.map((e) => e.seq);
   assert.deepEqual(
@@ -267,12 +267,12 @@ test("prompt returns the runId; an Idempotency-Key replays the same answer; even
     [...seqs].sort((a, b) => a - b),
   );
   const snap = await api("GET", `/v1/sessions/${id}`);
-  assert.equal((snap.body?.session as { transcript: unknown[] }).transcript.length, 2);
+  assert.equal((snap.body.session as { transcript: unknown[] }).transcript.length, 2);
 });
 
 test("the WebSocket stream honours mutable subscriptions and since", async (t) => {
   const created = await api("POST", "/v1/sessions", { workspaceId: "default" });
-  const id = (created.body?.session as { id: string }).id;
+  const id = (created.body.session as { id: string }).id;
   // Subscribe to nothing at first, then add the session's scope over the open socket.
   const ws = new WebSocket(`${base.replace("http", "ws")}/v1/events?scopes=daemon`, {
     headers: { authorization: `Bearer ${token}` },
@@ -340,7 +340,7 @@ test("SSE: resumes by Last-Event-ID, and a stale watermark yields snapshot.requi
       headers: { authorization: `Bearer ${token}`, ...headers },
     });
     assert.equal(res.headers.get("content-type"), "text/event-stream; charset=utf-8");
-    const reader = res.body?.getReader();
+    const reader = res.body.getReader();
     let buf = "";
     const frames: Array<{ id: string; event: string; data: DaemonEvent }> = [];
     while (frames.length < count && reader) {
@@ -373,23 +373,25 @@ test("SSE: resumes by Last-Event-ID, and a stale watermark yields snapshot.requi
 
 test("dialogs: opened on the stream, answered over HTTP, the second answer gets 409 naming the winner", async (t) => {
   const created = await api("POST", "/v1/sessions", { workspaceId: "default" });
-  const id = (created.body?.session as { id: string }).id;
+  const id = (created.body.session as { id: string }).id;
   const opened = streamUntil(t, `?since=${host.log.seq}&scopes=session:${id}`, (es) =>
     es.some((e) => e.type === "dialog.opened"),
   );
   await api("POST", `/v1/sessions/${id}/prompt`, { text: "please ASK" });
   const { events, ws } = await opened;
   t.after(() => ws.close());
-  const dialogId = (events.find((e) => e.type === "dialog.opened")?.payload as { dialogId: string }).dialogId;
+  const openedEvent = events.find((e) => e.type === "dialog.opened");
+  assert.ok(openedEvent, "dialog.opened was streamed");
+  const dialogId = (openedEvent.payload as { dialogId: string }).dialogId;
   const settled = streamUntil(t, `?since=${host.log.seq}&scopes=session:${id}`, (es) =>
     es.some((e) => e.type === "dialog.closed"),
   );
   const first = await api("POST", `/v1/dialogs/${dialogId}/respond`, { confirmed: true });
   assert.equal(first.status, 200);
-  assert.equal(first.body?.resolution, "answered");
+  assert.equal(first.body.resolution, "answered");
   const second = await api("POST", `/v1/dialogs/${dialogId}/respond`, { confirmed: false });
   assert.equal(second.status, 409);
-  const err = second.body?.error as { code: string; resolution: string; answeredBy: string };
+  const err = second.body.error as { code: string; resolution: string; answeredBy: string };
   assert.equal(err.code, "already_resolved");
   assert.equal(err.resolution, "answered");
   assert.ok(err.answeredBy);
@@ -401,10 +403,10 @@ test("dialogs: opened on the stream, answered over HTTP, the second answer gets 
 
 test("every session route answers and keeps the snapshot valid", async (t) => {
   const created = await api("POST", "/v1/sessions", { workspaceId: "default" });
-  const id = (created.body?.session as { id: string }).id;
+  const id = (created.body.session as { id: string }).id;
   const check = async (status: number, r: Awaited<ReturnType<typeof api>>) => {
     assert.equal(r.status, status, JSON.stringify(r.body));
-    if (r.body?.session) assert.ok(Value.Check(SessionSnapshot, r.body.session));
+    if (r.body.session) assert.ok(Value.Check(SessionSnapshot, r.body.session));
   };
   await check(200, await api("POST", `/v1/sessions/${id}/queue-mode`, { queue: "steering", mode: "all" }));
   await check(200, await api("POST", `/v1/sessions/${id}/clear-queue`));
@@ -415,7 +417,7 @@ test("every session route answers and keeps the snapshot valid", async (t) => {
   );
   await check(200, await api("POST", `/v1/sessions/${id}/thinking`, { thinkingLevel: "low" }));
   await check(200, await api("POST", `/v1/sessions/${id}/name`, { name: "renamed" }));
-  assert.equal(((await api("GET", `/v1/sessions/${id}`)).body?.session as { name: string }).name, "renamed");
+  assert.equal(((await api("GET", `/v1/sessions/${id}`)).body.session as { name: string }).name, "renamed");
   assert.equal((await api("GET", `/v1/sessions/${id}/tree`)).status, 200);
   assert.equal((await api("GET", `/v1/sessions/${id}/stats`)).status, 200);
   assert.equal((await api("GET", `/v1/sessions/${id}/entries`)).status, 200);
@@ -441,7 +443,7 @@ test("every session route answers and keeps the snapshot valid", async (t) => {
 
 test("dual encoding: the CBOR and JSON snapshots of one session carry the same transcript and revision", async (t) => {
   const created = await api("POST", "/v1/sessions", { workspaceId: "default" });
-  const id = (created.body?.session as { id: string }).id;
+  const id = (created.body.session as { id: string }).id;
   const settled = streamUntil(t, `?since=${host.log.seq}&scopes=session:${id}`, (es) =>
     es.some((e) => e.type === "session.phase" && (e.payload as { phase: string }).phase === "idle"),
   );
@@ -462,7 +464,7 @@ test("dual encoding: the CBOR and JSON snapshots of one session carry the same t
   const lease = await client.attachSession(id);
   t.after(() => lease.dispose().catch(() => {}));
   const cbor = lease.snapshot;
-  const json = (await api("GET", `/v1/sessions/${id}`)).body?.session as Record<string, unknown> & {
+  const json = (await api("GET", `/v1/sessions/${id}`)).body.session as Record<string, unknown> & {
     revision: number;
     transcript: Array<Record<string, unknown>>;
   };

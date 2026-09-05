@@ -75,7 +75,7 @@ test("device store: first device is owner, tokens verify, the file holds hashes 
   assert.equal(b.device.role, "member");
   assert.equal(store.verify(a.token)?.id, a.device.id);
   assert.equal(store.verify(`${a.token}x`), null);
-  assert.equal(store.verify("pid_NOPE00000000000_" + "a".repeat(43)), null);
+  assert.equal(store.verify(`pid_NOPE00000000000_${"a".repeat(43)}`), null);
 
   const raw = readFileSync(file, "utf8");
   assert.ok(!raw.includes(a.token.split("_")[2] ?? "!"), "the secret is never written");
@@ -356,11 +356,11 @@ test("authenticate: bearer, ticket only on upgrades, revoked token, failure lock
 
   for (let i = 0; i < 3; i++)
     authenticate(
-      fakeReq({ auth: "Bearer pid_BAD00000000000000_" + "b".repeat(43), remote: "9.9.9.9" }),
+      fakeReq({ auth: `Bearer pid_BAD00000000000000_${"b".repeat(43)}`, remote: "9.9.9.9" }),
       access,
     );
   const locked = authenticate(
-    fakeReq({ auth: "Bearer pid_BAD00000000000000_" + "b".repeat(43), remote: "9.9.9.9" }),
+    fakeReq({ auth: `Bearer pid_BAD00000000000000_${"b".repeat(43)}`, remote: "9.9.9.9" }),
     access,
   );
   assert.ok(!locked.ok && locked.status === 429, JSON.stringify(locked));
