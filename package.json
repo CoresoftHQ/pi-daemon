@@ -1,0 +1,24 @@
+{
+  "name": "pi-daemon-monorepo",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Cross-platform daemon that runs Pi Coding Agent sessions as supervised subprocesses and serves them to any client",
+  "license": "MIT",
+  "type": "module",
+  "engines": { "node": ">=22.19.0" },
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "typecheck": "tsc -p packages/daemon --noEmit && tsc -p packages/contract --noEmit",
+    "test": "node --test \"packages/daemon/src/**/*.test.ts\"",
+    "check:boundaries": "node scripts/check-boundaries.mjs",
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "build": "tsc -b packages/contract packages/daemon",
+    "verify": "npm run typecheck && npm run check:boundaries && npm test"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.2.0",
+    "@types/node": "^24.0.0",
+    "typescript": "~5.9.0"
+  }
+}

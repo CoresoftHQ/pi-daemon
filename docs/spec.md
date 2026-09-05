@@ -399,7 +399,7 @@ broad without being deep.
 | `POST /v1/sessions` | Spawn a runner in `workspaceId` |
 | `GET /v1/sessions/:id` | Canonical snapshot, JSON-encoded |
 | `GET /v1/sessions/:id/entries` | `get_entries` |
-| `POST /v1/sessions/:id/prompt` | `prompt`, with `Idempotency-Key` so a retry over a flaky link cannot double-send |
+| `POST /v1/sessions/:id/prompt` | `prompt`, with `Idempotency-Key` so a retry over a flaky link cannot double-send; returns the turn's `runId` (§8) |
 | `POST /v1/sessions/:id/steer` · `/follow-up` · `/abort` | `steer` · `follow_up` · `abort` |
 | `POST /v1/sessions/:id/queue-mode` · `/clear-queue` | `set_steering_mode` / `set_follow_up_mode` · `clear_queue` |
 | `POST /v1/sessions/:id/compact` | `compact` |
@@ -751,6 +751,13 @@ how it is kept: the runner is a child of the daemon, not of a connection, and no
 client disconnecting touches it. Events accumulate in the ring; a returning client resumes from
 its watermark.
 
+**Turns have ids.** RPC mode brackets a run with `agent_start` … `agent_settled` but gives it no
+identity, so the daemon mints a `runId` at `agent_start`. The `prompt` response returns it
+(or the queue position, if the prompt was steered or followed-up onto a running turn), and every
+`session.phase` and `session.interrupted` event carries it. This is what lets a client — a phone
+reconnecting, or a workflow waiting on a webhook (§11.10) — say "the turn *I* started finished",
+rather than inferring it from timing. Cheap in v1; a migration if added later.
+
 **Eviction.** No leases and no activity for `idleTimeout` (default 30 minutes) → the runner is
 shut down gracefully, then killed, and `session.evicted` goes out. The session stays listable
 because the JSONL file is the truth, and the next attach respawns
@@ -927,3 +934,30 @@ PTY addon did not load, and `files.write` moves there when the operator has swit
      state that assumes a workspace was born on this machine, and any client contract that
      addresses a session without saying which daemon it lives on. The ids rule in §3 and
      `daemonId` in pairing and `capabilities` are the whole cost today.
+10. **External orchestration — n8n — as v1.2.** Feasible, and mostly already there: n8n's HTTP
+    Request node speaks JSON with a bearer token, which is Surface B (§5); answering
+    `dialog.opened` through `POST /v1/dialogs/:id/respond` means an approval can be routed
+    through Slack or a human in a workflow without the daemon holding any policy (§7.2); and
+    `Idempotency-Key` on prompts already makes n8n's retries safe. What v1.2 adds, all additive:
+    - *Outbound webhooks.* n8n is triggered by HTTP, not by a WebSocket it holds open. A
+      `webhooks` resource — URL, event filter, shared secret — that POSTs the same `/v1` event
+      envelope with an HMAC signature and retries with backoff. The same sink serves push
+      notifications (§11.1) and any other relay, so it is one feature, not two.
+    - *A wait and a callback mode for prompts,* since a workflow step is request/response:
+      `?wait=<seconds>` returning the finished turn, or `callbackUrl` on the prompt. Plus a
+      one-shot `POST /v1/workspaces/:id/run { prompt, model }` that makes an ephemeral session,
+      runs one turn, and returns `{ text, items, usage, stopReason }` — the shape a workflow
+      actually wants.
+    - *Service credentials.* A QR is the wrong ceremony for a server. `pi-daemon devices create
+      --name n8n --role automation` mints a token non-interactively, with a role narrower than
+      `member` (no terminals, no file writes unless granted) — which is also the answer to
+      §11.4.
+    - *An n8n community node* (`n8n-nodes-pi-daemon`) in the clients family: a credentials type,
+      operations over the OpenAPI that `pi-daemon-contract` already generates, and a trigger node
+      that registers its own webhook. An MCP facade over `/v1` is the alternative route into
+      n8n's AI Agent node and any other MCP client, and is thin enough to do as well.
+
+    One consequence worth acting on: with n8n as the orchestrator, the v2 *schedules* item is
+    probably not worth building — n8n is a better scheduler than the daemon would be. And one
+    reservation v1 must carry so v1.2 stays additive: turns need an id a workflow can correlate
+    on (§8).

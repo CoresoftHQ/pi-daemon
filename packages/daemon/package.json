@@ -1,0 +1,29 @@
+{
+  "name": "pi-daemon",
+  "version": "0.1.0",
+  "description": "Cross-platform daemon that runs Pi Coding Agent sessions as supervised subprocesses and serves them over pi's remote-session protocol and a JSON API",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "bin": {
+    "pi-daemon": "dist/cli/main.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "node --test \"src/**/*.test.ts\"",
+    "build": "tsc -b"
+  },
+  "dependencies": {}
+}

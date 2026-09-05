@@ -3,8 +3,9 @@
 Companion to [the specification](spec.md). Ten milestones, each independently demonstrable, each
 with acceptance criteria that are testable rather than aspirational.
 
-**Status (2026-09-04): approved; M0 complete — GO. M1 is next.** Results in
-[`spike/README.md`](../spike/README.md).
+**Status (2026-09-05): approved; M0 complete — GO (results in
+[`spike/README.md`](../spike/README.md)); M1 complete on Windows, CI matrix pending first push.
+M2 is next.**
 
 ---
 
@@ -94,6 +95,17 @@ detail.
 
 **Purpose.** The two riskiest mechanical things, together, because the supervisor is what exposes
 the platform differences.
+
+**Result (2026-09-05, Windows):** `packages/daemon/src/os` and `src/runners` exist with 51
+tests (48 pass, 3 platform skips) running under Node's type stripping with no build step; a
+fake `pi` (`test/fake-pi.mjs`) lets the runner suite run with no pi installed. Verified here:
+tree-kill takes a runner's tool child; drive-letter case canonicalises equal; a junction out of
+the root is refused; reserved Windows names are rejected; the named-pipe endpoint accepts
+`net.connect(path)` (loopback fallback not needed); JSONL survives `U+2028` and byte-level
+fragmentation; a dead runner turns dialog answers into `false`, not exceptions. The Linux
+`node-pty` prebuild decision is deferred to M7 with the multiarch fork as the default choice;
+the systemd and launchd adapters are unit-tested by rendered output and round-trip on CI when
+`PI_DAEMON_SERVICE_TESTS=1`.
 
 **Build.** `os`: directory resolution, argv spawn, `pi` binary discovery including the Windows
 shim, process-tree kill, path canonicalisation, atomic write, debounced watch with a polling
