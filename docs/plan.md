@@ -4,8 +4,8 @@ Companion to [the specification](spec.md). Ten milestones, each independently de
 with acceptance criteria that are testable rather than aspirational.
 
 **Status (2026-09-05): approved; M0 complete — GO (results in
-[`spike/README.md`](../spike/README.md)); M1 complete on Windows, CI matrix pending first push.
-M2 is next.**
+[`spike/README.md`](../spike/README.md)); M1 complete, CI matrix green on the `develop` branch;
+M2 complete. M3 is next.**
 
 ---
 
@@ -128,6 +128,15 @@ documented fallback if it fails.
 ## M2 — `sessions`: state, events, leases
 
 **Purpose.** A session layer fully exercisable with no network and no live model.
+
+**Result (2026-09-05):** `packages/daemon/src/sessions` — canonical `SessionState` with
+`revision`; the projector ported from the spike with pi's rules baked in (user items have no
+`item_finished`; history keeps pi's durable entry ids via `get_entries`); the event log with one
+global `seq`, a ring bounded by count and bytes, `since` replay, and gap detection; leases;
+the dialog relay table (first answer wins, runner death closes the dialog); `Session` with
+`runId` minted at `agent_start` and returned from `prompt`; `SessionHost` with idle eviction,
+an LRU runner cap, rehydration on attach, crash → `interrupted`, and a catalog that reads only
+session-file headers. 27 tests against the fake `pi`, no network.
 
 **Build.** Session registry keyed by pi's `sessionId`; the canonical state producer (snapshot +
 `revision`, progress); the event log with one global monotonic `seq`, a bounded ring, `since`
