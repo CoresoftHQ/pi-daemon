@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
 import { mkdtempSync, rmSync } from "node:fs";
 import path from "node:path";
+import type { TestContext } from "node:test";
 import { after, before, test } from "node:test";
 import { tmpDir } from "../os/paths.ts";
 import { pidAlive } from "../os/spawn.ts";
 import type { RpcEvent, RpcState } from "./rpc.ts";
+import type { RunnerSpawnOptions } from "./runner.ts";
 import { buildArgs, Runner, RunnerExitedError } from "./runner.ts";
 
 const FAKE = path.resolve(import.meta.dirname, "..", "..", "test", "fake-pi.mjs");
@@ -15,10 +17,20 @@ before(() => {
   cwd = mkdtempSync(path.join(tmpDir(), "pi-daemon-runner-"));
 });
 after(() => {
-  rmSync(cwd, { recursive: true, force: true });
+  rmSync(cwd, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 });
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Spawn a runner that is killed when the test ends, however it ends. A leaked runner keeps
+ * its pipes open and would hold `node --test` until the CI job's timeout.
+ */
+function spawnFor(t: TestContext, options: Partial<RunnerSpawnOptions> = {}): Runner {
+  const r = Runner.spawn({ cwd, launcher, ...options });
+  t.after(() => r.kill());
+  return r;
+}
 
 async function waitUntil(pred: () => boolean, timeoutMs = 5000): Promise<void> {
   const t0 = Date.now();
@@ -58,8 +70,8 @@ test("buildArgs maps options to pi flags", () => {
   ]);
 });
 
-test("spawn, correlate a command, stream a turn, stop gracefully", async () => {
-  const r = Runner.spawn({ cwd, launcher, session: "sess-1" });
+test("spawn, correlate a command, stream a turn, stop gracefully", async (t) => {
+  const r = spawnFor(t, { session: "sess-1" });
   const events: string[] = [];
   r.on("event", (e: RpcEvent) => events.push(e.type));
 
@@ -68,9 +80,11 @@ test("spawn, correlate a command, stream a turn, stop gracefully", async () => {
   assert.equal(state.data?.sessionId, "sess-1");
   assert.equal(r.state, "running");
 
+  // Register before prompting: on POSIX a whole short turn can arrive in one chunk.
+  const settled = r.waitForEvent("agent_settled");
   const p = await r.send({ type: "prompt", message: "hello" });
   assert.equal(p.success, true);
-  await r.waitForEvent("agent_settled");
+  await settled;
   assert.deepEqual(events.slice(0, 4), ["agent_start", "turn_start", "message_start", "message_end"]);
   assert.ok(events.includes("message_update"));
   assert.equal(events.at(-1), "agent_settled");
@@ -84,8 +98,8 @@ test("spawn, correlate a command, stream a turn, stop gracefully", async () => {
   assert.equal(r.state, "exited");
 });
 
-test("a dialog raised inside the runner blocks until answered; the answer reaches the model", async () => {
-  const r = Runner.spawn({ cwd, launcher });
+test("a dialog raised inside the runner blocks until answered; the answer reaches the model", async (t) => {
+  const r = spawnFor(t);
   const deltas: string[] = [];
   r.on("event", (e: RpcEvent) => {
     const ev = e.assistantMessageEvent as { type?: string; delta?: string } | undefined;
@@ -99,22 +113,24 @@ test("a dialog raised inside the runner blocks until answered; the answer reache
   assert.equal(req.method, "confirm");
   await sleep(200);
   assert.equal(deltas.length, 0, "no reply streamed while the dialog is open");
+  const settled = r.waitForEvent("agent_settled");
   assert.equal(r.respondUi(req.id, { confirmed: true }), true);
-  await r.waitForEvent("agent_settled");
+  await settled;
   assert.equal(deltas.join(""), "answered:true");
   await r.stop();
 });
 
-test("kill() takes the whole process tree, including a tool child", async () => {
-  const r = Runner.spawn({ cwd, launcher });
+test("kill() takes the whole process tree, including a tool child", async (t) => {
+  const r = spawnFor(t);
   const childPid = new Promise<number>((resolve) =>
     r.on("event", (e: RpcEvent) => {
       if (e.type === "fake_child") resolve(e.pid as number);
     }),
   );
+  const settled = r.waitForEvent("agent_settled");
   await r.send({ type: "prompt", message: "SPAWN_CHILD" });
   const pid = await childPid;
-  await r.waitForEvent("agent_settled");
+  await settled;
   assert.equal(pidAlive(pid), true, "grandchild is running before the kill");
   const runnerPid = r.pid as number;
 
@@ -126,8 +142,8 @@ test("kill() takes the whole process tree, including a tool child", async () => 
   assert.equal(r.exitInfo?.expected, true);
 });
 
-test("a crash is reported as an unexpected exit with a stderr tail; pending commands reject", async () => {
-  const r = Runner.spawn({ cwd, launcher });
+test("a crash is reported as an unexpected exit with a stderr tail; pending commands reject", async (t) => {
+  const r = spawnFor(t);
   const exit = new Promise<{ expected: boolean; code: number | null; stderrTail: string }>((resolve) =>
     r.once("exit", resolve),
   );
@@ -140,8 +156,8 @@ test("a crash is reported as an unexpected exit with a stderr tail; pending comm
   assert.equal(r.respondUi("nope", { cancelled: true }), false);
 });
 
-test("stop() falls back to tree-kill when the runner ignores stdin EOF", async () => {
-  const r = Runner.spawn({ cwd, launcher, extraArgs: ["--ignore-stdin-end"] });
+test("stop() falls back to tree-kill when the runner ignores stdin EOF", async (t) => {
+  const r = spawnFor(t, { extraArgs: ["--ignore-stdin-end"] });
   await r.send({ type: "get_state" });
   const t0 = Date.now();
   const exit = await r.stop({ graceMs: 300 });
@@ -151,12 +167,14 @@ test("stop() falls back to tree-kill when the runner ignores stdin EOF", async (
   assert.equal(r.state, "exited");
 });
 
-test("abort mid-turn marks the assistant message aborted", async () => {
-  const r = Runner.spawn({ cwd, launcher });
+test("abort mid-turn marks the assistant message aborted", async (t) => {
+  const r = spawnFor(t);
+  const firstUpdate = r.waitForEvent("message_update");
   await r.send({ type: "prompt", message: "SLOW one two three four five six seven eight" });
-  await r.waitForEvent("message_update");
+  await firstUpdate;
+  const settled = r.waitForEvent("agent_settled");
   await r.send({ type: "abort" });
-  await r.waitForEvent("agent_settled");
+  await settled;
   const msgs = await r.send<{ messages: Array<{ role: string; stopReason?: string }> }>({
     type: "get_messages",
   });
@@ -170,8 +188,9 @@ test("a missing pi is a synchronous PiNotFoundError, not a crash", () => {
 
 test("the real pi on PATH spawns through the resolved launcher and answers get_state", {
   skip: process.env.PI_DAEMON_REAL_PI !== "1" ? "set PI_DAEMON_REAL_PI=1" : false,
-}, async () => {
+}, async (t) => {
   const r = Runner.spawn({ cwd, isolate: true, noTools: true, noSession: true });
+  t.after(() => r.kill());
   const state = await r.send<RpcState>({ type: "get_state" });
   assert.equal(state.success, true);
   assert.ok(state.data?.sessionId);

@@ -9,6 +9,8 @@ jobs:
   verify:
     name: ${{ matrix.os }} / node ${{ matrix.node }}
     runs-on: ${{ matrix.os }}
+    # A leaked runner process would otherwise hold `node --test` open until GitHub's 6-hour cap.
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:

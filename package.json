@@ -5,11 +5,15 @@
   "description": "Cross-platform daemon that runs Pi Coding Agent sessions as supervised subprocesses and serves them to any client",
   "license": "MIT",
   "type": "module",
-  "engines": { "node": ">=22.19.0" },
-  "workspaces": ["packages/*"],
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "typecheck": "tsc -p packages/daemon --noEmit && tsc -p packages/contract --noEmit",
-    "test": "node --test \"packages/daemon/src/**/*.test.ts\"",
+    "test": "node --test --test-force-exit \"packages/daemon/src/**/*.test.ts\"",
     "check:boundaries": "node scripts/check-boundaries.mjs",
     "lint": "biome check .",
     "format": "biome format --write .",
