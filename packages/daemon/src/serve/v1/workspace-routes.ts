@@ -403,8 +403,7 @@ export function addWorkspaceRoutes(router: Router, options: WorkspaceRoutesOptio
       const rel = relPath(url);
       const ifMatch = req.headers["if-match"];
       try {
-        const { relative } = files.resolveOrRefuse(w.path, rel);
-        files.remove(w.path, rel, {
+        const { relative } = files.remove(w.path, rel, {
           ifMatch: typeof ifMatch === "string" ? ifMatch : undefined,
           recursive: flag(url, "recursive"),
         });
@@ -444,9 +443,7 @@ export function addWorkspaceRoutes(router: Router, options: WorkspaceRoutesOptio
       const w = ws(params.id ?? "");
       const b = await body(req, MoveRequest);
       try {
-        const from = files.resolveOrRefuse(w.path, b.from).relative;
-        const to = files.resolveOrRefuse(w.path, b.to).relative;
-        files.move(w.path, b.from, b.to, { overwrite: b.overwrite });
+        const { from, to } = files.move(w.path, b.from, b.to, { overwrite: b.overwrite });
         service.wrote(w.id, [from, to], principal?.deviceId ?? "unknown");
         sendJson(res, 200, { from, to });
       } catch (err) {

@@ -3,6 +3,7 @@ import { execFileSync } from "node:child_process";
 import {
   chmodSync,
   existsSync,
+  lstatSync,
   mkdirSync,
   mkdtempSync,
   readdirSync,
@@ -91,16 +92,30 @@ test("symlinks: listed as symlinks, never followed out, deleted as links", (t) =
     assert.equal(leak?.kind, "symlink");
     assert.equal(leak?.target, undefined, "an outside target is not revealed");
     assert.equal(page.entries.find((e) => e.name === "inside-link")?.target, "README.md");
-    assert.equal(page.entries.find((e) => e.name === "outdir")?.kind, win ? "dir" : "symlink");
+    // a junction on Windows is a reparse point too, so lstat reports it as a link everywhere
+    assert.equal(page.entries.find((e) => e.name === "outdir")?.kind, "symlink");
     refusal(() => read(root, "leak"), "escapes-root");
     refusal(() => read(root, "chain"), "escapes-root");
     refusal(() => read(root, "outdir/secret.txt"), "escapes-root");
-    refusal(() => remove(root, "leak"), "escapes-root");
-    // an in-tree link is removable as a link
-    remove(root, "inside-link");
+    // deleting through a link that points outside is refused: the realpath is not ours
+    refusal(() => remove(root, "outdir/secret.txt"), "escapes-root");
+    // links are removed as links and never followed, whichever way they point
+    assert.deepEqual(remove(root, "inside-link"), { relative: "inside-link" });
     assert.ok(existsSync(path.join(root, "README.md")), "the target survives");
     assert.ok(!existsSync(path.join(root, "inside-link")));
-    assert.equal(readFileSync(path.join(outside, "secret.txt"), "utf8"), "nope\n");
+    remove(root, "chain");
+    remove(root, "leak");
+    assert.throws(() => lstatSync(path.join(root, "leak")), "the link itself is gone");
+    assert.equal(
+      readFileSync(path.join(outside, "secret.txt"), "utf8"),
+      "nope\n",
+      "the outside target survives",
+    );
+    // moving a link moves the link
+    symlinkSync(path.join(root, "README.md"), path.join(root, "inside-link"));
+    move(root, "inside-link", "src/moved-link");
+    assert.ok(lstatSync(path.join(root, "src", "moved-link")).isSymbolicLink());
+    assert.ok(existsSync(path.join(root, "README.md")));
   })();
 });
 

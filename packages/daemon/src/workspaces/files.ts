@@ -16,8 +16,10 @@ import {
   readlinkSync,
   readSync,
   renameSync,
+  rmdirSync,
   rmSync,
   statSync,
+  unlinkSync,
 } from "node:fs";
 import path from "node:path";
 import type { ResolveInsideFailure } from "../os/canon.ts";
@@ -61,6 +63,53 @@ export function resolveOrRefuse(root: string, rel: string): { canonical: string;
   const r = resolveInside(root, rel);
   if (!r.ok) refuse(r.reason);
   return { canonical: r.canonical, relative: r.relative.split(path.sep).join("/") };
+}
+
+/**
+ * Like `resolveOrRefuse`, but the final component is not followed — for deleting or renaming
+ * a symlink *as a link*. The parent still has to resolve inside the root, and every syntactic
+ * rule still applies; only "the link points outside" is allowed through, because removing such
+ * a link is exactly what a client wants and touches nothing outside.
+ */
+export function resolveLinkOrRefuse(root: string, rel: string): { lexical: string; relative: string } {
+  if (hasForbiddenCharacter(rel)) {
+    throw new FileError(403, "outside_workspace", "path is not inside the workspace", {
+      rule: "control-character",
+    });
+  }
+  const full = resolveInside(root, rel);
+  if (!full.ok && full.reason !== "escapes-root") refuse(full.reason);
+  const segments = rel.split(/[\\/]+/).filter((s) => s.length > 0 && s !== ".");
+  const last = segments.pop();
+  if (!last) throw new FileError(403, "protected", "the workspace root cannot be deleted or moved");
+  const parent = segments.length > 0 ? resolveInside(root, segments.join("/")) : null;
+  if (parent && !parent.ok) refuse(parent.reason);
+  const parentCanonical = parent ? parent.canonical : root;
+  const parentRelative = parent ? parent.relative.split(path.sep).join("/") : "";
+  return {
+    lexical: path.join(parentCanonical, last),
+    relative: parentRelative ? `${parentRelative}/${last}` : last,
+  };
+}
+
+function lexists(p: string): boolean {
+  try {
+    lstatSync(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Unlink a symlink; on Windows a directory link needs rmdir. */
+function unlinkLink(p: string): void {
+  try {
+    unlinkSync(p);
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException).code;
+    if (code === "EPERM" || code === "EISDIR" || code === "EACCES") rmdirSync(p);
+    else throw err;
+  }
 }
 
 export interface TreeEntry {
@@ -342,50 +391,59 @@ export interface RemoveOptions {
   recursive?: boolean | undefined;
 }
 
-/** Delete. Directories need recursive; the root and .git are never deletable; links are removed, not followed. */
-export function remove(root: string, rel: string, options: RemoveOptions = {}): void {
-  const { canonical, relative } = resolveOrRefuse(root, rel);
-  if (canonical === root || relative === "" || relative === ".git" || relative.startsWith(".git/"))
+/**
+ * Delete. Directories need recursive; the root and .git are never deletable; a symlink is
+ * removed as a link and never followed — which is why this works on the lexical path, not the
+ * realpath: the realpath of `link` *is* its target.
+ */
+export function remove(root: string, rel: string, options: RemoveOptions = {}): { relative: string } {
+  const { lexical, relative } = resolveLinkOrRefuse(root, rel);
+  if (relative === ".git" || relative.startsWith(".git/"))
     throw new FileError(403, "protected", "the workspace root and .git cannot be deleted through the API");
   let ls: Stats;
   try {
-    ls = lstatSync(canonical);
+    ls = lstatSync(lexical);
   } catch {
     throw new FileError(404, "not_found", "no such entry");
   }
   if (ls.isSymbolicLink()) {
-    rmSync(canonical);
-    return;
+    unlinkLink(lexical);
+    return { relative };
   }
   if (ls.isDirectory()) {
     if (!options.recursive) throw new FileError(409, "is_directory", "directories need recursive=1");
-    rmSync(canonical, { recursive: true, force: true, maxRetries: 3, retryDelay: 50 });
-    return;
+    rmSync(lexical, { recursive: true, force: true, maxRetries: 3, retryDelay: 50 });
+    return { relative };
   }
   if (options.ifMatch) {
-    const current = etagOf(canonical, statSync(canonical));
+    const current = etagOf(lexical, ls);
     if (options.ifMatch !== current)
       throw new FileError(412, "precondition_failed", "the file changed since you read it", {
         etag: current,
       });
   }
-  rmSync(canonical, { force: true });
+  rmSync(lexical, { force: true });
+  return { relative };
 }
 
-/** Rename within the workspace. A plain rename: git sees delete + add until staged. */
+/**
+ * Rename within the workspace. A plain rename: git sees delete + add until staged. Both ends
+ * are lexical, so a link is moved as a link and a destination that is a link is replaced, not
+ * written through.
+ */
 export function move(
   root: string,
   fromRel: string,
   toRel: string,
   options: { overwrite?: boolean | undefined } = {},
-): void {
-  const from = resolveOrRefuse(root, fromRel);
-  const to = resolveOrRefuse(root, toRel);
-  if (from.relative === "" || to.relative === "")
-    throw new FileError(403, "protected", "the workspace root cannot be moved");
-  if (!existsSync(from.canonical)) throw new FileError(404, "not_found", "no such entry");
-  if (existsSync(to.canonical) && !options.overwrite)
-    throw new FileError(409, "exists", "destination exists");
-  mkdirSync(path.dirname(to.canonical), { recursive: true });
-  renameSync(from.canonical, to.canonical);
+): { from: string; to: string } {
+  const from = resolveLinkOrRefuse(root, fromRel);
+  const to = resolveLinkOrRefuse(root, toRel);
+  if (from.relative === ".git" || from.relative.startsWith(".git/") || to.relative === ".git")
+    throw new FileError(403, "protected", ".git cannot be moved through the API");
+  if (!lexists(from.lexical)) throw new FileError(404, "not_found", "no such entry");
+  if (lexists(to.lexical) && !options.overwrite) throw new FileError(409, "exists", "destination exists");
+  mkdirSync(path.dirname(to.lexical), { recursive: true });
+  renameSync(from.lexical, to.lexical);
+  return { from: from.relative, to: to.relative };
 }
