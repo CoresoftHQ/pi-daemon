@@ -13,7 +13,7 @@
   ],
   "scripts": {
     "typecheck": "tsc -p packages/daemon --noEmit && tsc -p packages/contract --noEmit",
-    "test": "node --test --test-force-exit \"packages/daemon/src/**/*.test.ts\"",
+    "test": "node --conditions=development --test --test-force-exit \"packages/daemon/src/**/*.test.ts\"",
     "check:boundaries": "node scripts/check-boundaries.mjs",
     "lint": "biome check .",
     "format": "biome format --write .",

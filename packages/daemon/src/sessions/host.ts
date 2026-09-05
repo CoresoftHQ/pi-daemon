@@ -179,6 +179,29 @@ export class SessionHost {
     return this.#sessions.get(id);
   }
 
+  /** The Session, rehydrated if needed, without taking a lease (Surface B has no leases). */
+  async ensureLive(id: string): Promise<Session> {
+    this.#assertOpen();
+    let session = this.#sessions.get(id);
+    if (!session) {
+      const known = this.#known.get(id) ?? this.#fromCatalog(id);
+      if (!known) throw new SessionNotFoundError(id);
+      await this.#makeRoom();
+      session = await Session.open(
+        id,
+        this.#config(known.cwd, known.workspaceId ?? "", known.file),
+        this.#deps(),
+        known.createdAt,
+      );
+      this.#register(session);
+    } else if (!session.live) {
+      await this.#makeRoom();
+      await session.ensureLive();
+    }
+    session.touch();
+    return session;
+  }
+
   /** Attach a connection: rehydrate if needed, then take a lease. */
   async attach(id: string, connectionId: string, mode: LeaseMode): Promise<Session> {
     this.#assertOpen();

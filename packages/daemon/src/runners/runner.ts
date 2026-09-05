@@ -71,6 +71,21 @@ export class PiNotFoundError extends Error {
   }
 }
 
+/**
+ * Every live runner, so that when this process exits — cleanly, by signal, or by a test
+ * runner's force-exit — no pi process is orphaned. killTree is synchronous on both platforms,
+ * which is what an exit hook needs.
+ */
+const liveRunners = new Set<Runner>();
+let exitHookInstalled = false;
+function installExitHook(): void {
+  if (exitHookInstalled) return;
+  exitHookInstalled = true;
+  process.once("exit", () => {
+    for (const r of liveRunners) if (r.pid) killTree(r.pid);
+  });
+}
+
 export function buildArgs(options: RunnerSpawnOptions): string[] {
   const args = ["--mode", "rpc"];
   if (options.isolate)
@@ -146,7 +161,10 @@ export class Runner extends EventEmitter<RunnerEvents> {
       stdio: "pipe",
       ownGroup: true,
     });
-    return new Runner(child, options, args);
+    const runner = new Runner(child, options, args);
+    liveRunners.add(runner);
+    installExitHook();
+    return runner;
   }
 
   get pid(): number | undefined {
@@ -168,6 +186,7 @@ export class Runner extends EventEmitter<RunnerEvents> {
   #finish(code: number | null, signal: NodeJS.Signals | null): void {
     if (this.#state === "exited") return;
     this.#state = "exited";
+    liveRunners.delete(this);
     const exit: RunnerExit = { code, signal, expected: this.#expectedExit, stderrTail: this.#stderrTail };
     this.#exit = exit;
     for (const [, p] of this.#pending)

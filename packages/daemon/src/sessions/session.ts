@@ -325,6 +325,28 @@ export class Session extends EventEmitter<SessionEvents> {
     return this.#rpc({ type: "get_session_stats" });
   }
 
+  getTree(): Promise<unknown> {
+    return this.#rpc({ type: "get_tree" });
+  }
+
+  setQueueMode(queue: "steering" | "followUp", mode: "all" | "one-at-a-time"): Promise<void> {
+    return this.#rpc(
+      queue === "steering" ? { type: "set_steering_mode", mode } : { type: "set_follow_up_mode", mode },
+    ).then(() => undefined);
+  }
+
+  clearQueue(): Promise<void> {
+    return this.#rpc({ type: "clear_queue" }).then(() => undefined);
+  }
+
+  /** Fork from an earlier user message; the transcript is reloaded from pi's entries afterwards. */
+  async fork(entryId: string): Promise<void> {
+    await this.#rpc({ type: "fork", entryId });
+    const entries = await this.#rpc<{ entries: unknown[] }>({ type: "get_entries" });
+    if (entries) this.projector.loadEntries(entries.entries);
+    await this.#refreshState();
+  }
+
   async #refreshState(): Promise<void> {
     const state = await this.#rpc<RpcState>({ type: "get_state" });
     if (state) {

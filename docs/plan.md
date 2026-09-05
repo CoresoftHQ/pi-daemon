@@ -6,7 +6,7 @@ with acceptance criteria that are testable rather than aspirational.
 **Status (2026-09-05): approved; M0 complete — GO (results in
 [`spike/README.md`](../spike/README.md)); M1 complete, CI matrix green on the `develop` branch;
 M2 complete; M3 complete; M4 complete apart from its human security review and the manual
-browser-over-`tailscale cert` check. M5 is next.**
+browser-over-`tailscale cert` check; M5 complete. M6 is next.**
 
 ---
 
@@ -234,6 +234,18 @@ the upgrade path.
 ## M5 — `pi-daemon-contract` and Surface B
 
 **Purpose.** The JSON surface, and the published contract other repositories build against.
+
+**Result (2026-09-05):** `packages/contract` — TypeBox schemas (pure JS, the library pi itself
+uses) for session state, transcript items as discriminated unions, the event envelope and every
+payload, all request/response bodies, and OpenAPI 3.1 generated from them; consumed by the
+daemon through a `development` export condition so nothing needs building to run. In the
+daemon, `serve/v1`: a small router validating bodies against the contract, every session route
+from spec §5.1, `Idempotency-Key` replay on prompt, the dialog route with `409` naming the
+winner, the event stream over WebSocket (JSON frames, mutable subscriptions, `since`) and SSE
+(`Last-Event-ID`, `snapshot.required` on a stale watermark), and `/v1/capabilities`. The
+**dual-encoding conformance test** attaches pi's `PiClient` and fetches the JSON snapshot of the
+same session and asserts identical transcript and revision. 9 tests plus the contract's own
+typecheck. Workspaces, files, groups (M6) and terminals (M7) are the routes still absent.
 
 **Build.** The contract package: request/response shapes, the `/v1` event envelope, runtime
 schemas, OpenAPI generated from those schemas rather than maintained beside them. In the daemon:

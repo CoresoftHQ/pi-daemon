@@ -22,12 +22,13 @@
   ],
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "node --test --test-force-exit \"src/**/*.test.ts\"",
+    "test": "node --conditions=development --test --test-force-exit \"src/**/*.test.ts\"",
     "build": "tsc -b"
   },
   "dependencies": {
     "@earendil-works/pi-protocol": "0.84.4",
     "selfsigned": "^5.5.0",
-    "ws": "^8.21.3"
+    "ws": "^8.21.3",
+    "@coresoft-hq/pi-daemon-contract": "0.1.0"
   }
 }

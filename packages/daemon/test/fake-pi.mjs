@@ -24,7 +24,7 @@ const sessionArg = flag("--session");
 const sessionId = sessionArg && !/[\\/]/.test(sessionArg) ? sessionArg : randomUUID();
 const sessionFile =
   sessionArg && /[\\/]/.test(sessionArg) ? sessionArg : `${process.cwd()}/fake-${sessionId}.jsonl`;
-const sessionName = flag("--name");
+let sessionName = flag("--name");
 const model = {
   id: "fake-1",
   name: "Fake 1",
@@ -198,7 +198,34 @@ function handle(cmd) {
     case "set_thinking_level":
       return respond(cmd, "set_thinking_level");
     case "set_session_name":
+      sessionName = String(cmd.name ?? "");
       return respond(cmd, "set_session_name");
+    case "set_steering_mode":
+    case "set_follow_up_mode":
+    case "clear_queue":
+    case "compact":
+    case "steer":
+    case "follow_up":
+      return respond(cmd, cmd.type);
+    case "get_tree":
+      return respond(cmd, "get_tree", {
+        data: { tree: messages.map((_m, i) => ({ id: `e${i + 1}`, children: [] })) },
+      });
+    case "fork":
+      return respond(cmd, "fork", { data: { text: "forked", cancelled: false } });
+    case "get_session_stats":
+      return respond(cmd, "get_session_stats", {
+        data: {
+          sessionId,
+          userMessages: messages.filter((m) => m.role === "user").length,
+          assistantMessages: messages.filter((m) => m.role === "assistant").length,
+          toolCalls: 0,
+          toolResults: 0,
+          totalMessages: messages.length,
+          tokens: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+          cost: 0,
+        },
+      });
     case "extension_ui_response": {
       const r = pendingUi.get(cmd.id);
       if (r) {

@@ -15,6 +15,8 @@ export interface WorkspaceResolver {
   resolveCwd(requested?: string): ResolvedWorkspace;
   /** The workspace a known session lives in, by its recorded cwd. */
   workspaceFor(cwd: string): { workspaceId: string; cwd: string } | undefined;
+  /** Surface B names workspaces by id only (spec §3). */
+  workspaceById(workspaceId: string): { workspaceId: string; cwd: string } | undefined;
 }
 
 export function singleRootResolver(root: string, workspaceId = "default"): WorkspaceResolver {
@@ -30,6 +32,9 @@ export function singleRootResolver(root: string, workspaceId = "default"): Works
     workspaceFor(cwd) {
       const c = canonicalize(cwd);
       return isInside(canonicalRoot, c) ? { workspaceId, cwd: c } : undefined;
+    },
+    workspaceById(id) {
+      return id === workspaceId ? { workspaceId, cwd: canonicalRoot } : undefined;
     },
   };
 }
