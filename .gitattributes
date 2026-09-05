@@ -1,0 +1,11 @@
+# One line ending everywhere. Windows checkouts default to CRLF, which fails biome's LF
+# formatting check in CI and makes diffs noisy across the three platforms this daemon targets.
+* text=auto eol=lf
+
+# Binaries never get touched.
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.node binary
+*.wasm binary
