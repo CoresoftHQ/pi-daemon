@@ -47,7 +47,8 @@ test("windows task renders a per-user AtLogOn registration with a Limited princi
 test("windows task with environment variables wraps the action in a hidden PowerShell", () => {
   const script = new WindowsTaskServiceManager().render(def);
   assert.match(script, /-Execute 'powershell\.exe'/);
-  assert.match(script, /\$env:WEIRD = 'a b''c'/);
+  // Inside the outer -Argument '…' literal every quote is doubled, so 'a b''c' appears as ''a b''''c''.
+  assert.match(script, /\$env:WEIRD = ''a b''''c''/);
 });
 
 test("serviceManager picks the adapter for this platform", () => {
