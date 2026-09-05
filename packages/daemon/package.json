@@ -25,5 +25,8 @@
     "test": "node --test --test-force-exit \"src/**/*.test.ts\"",
     "build": "tsc -b"
   },
-  "dependencies": {}
+  "dependencies": {
+    "@earendil-works/pi-protocol": "0.84.4",
+    "ws": "^8.21.3"
+  }
 }

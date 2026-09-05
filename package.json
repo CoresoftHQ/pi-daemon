@@ -22,7 +22,9 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.2.0",
+    "@earendil-works/pi-client": "0.84.4",
     "@types/node": "^24.0.0",
+    "@types/ws": "^8.18.1",
     "typescript": "~5.9.0"
   }
 }

@@ -13,14 +13,17 @@
 import type { RpcEvent, RpcModel, RpcState } from "../runners/rpc.ts";
 import type {
   AssistantItem,
+  FinishedAssistantItem,
+  FinishedToolItem,
   ImageContent,
   ModelRef,
   Progress,
+  RunningToolItem,
   SessionState,
+  StreamingAssistantItem,
   TextContent,
   ThinkingContent,
   ToolCallContent,
-  ToolItem,
   TranscriptItem,
   Usage,
   UserItem,
@@ -91,6 +94,13 @@ function toolContent(content: unknown): Array<TextContent | ImageContent> {
 export function modelRef(m: RpcModel | null | undefined | Loose): ModelRef {
   const o = obj(m);
   return { provider: str(o.provider, "unknown"), id: str(o.id, "unknown") };
+}
+
+/** A tool item's final shape: the status/isError pair is one discriminator, never two flags. */
+function finishTool(base: Omit<RunningToolItem, "status" | "isError">, isError: boolean): FinishedToolItem {
+  return isError
+    ? { ...base, status: "error", isError: true }
+    : { ...base, status: "complete", isError: false };
 }
 
 export interface ProjectorOutput {
@@ -222,36 +232,35 @@ export class Projector {
       case "toolResult": {
         const toolCallId = str(m.toolCallId);
         const usage = usageOf(m.usage);
-        return {
-          id,
-          role: "tool",
-          toolCallId,
-          toolName: str(m.toolName),
-          input: this.#toolInputs.get(toolCallId) ?? {},
-          content: toolContent(m.content),
-          ...(m.details !== undefined ? { details: m.details } : {}),
-          ...(usage ? { usage } : {}),
-          timestamp: num(m.timestamp, timestamp),
-          status: m.isError ? "error" : "complete",
-          isError: !!m.isError,
-        };
+        return finishTool(
+          {
+            id,
+            role: "tool",
+            toolCallId,
+            toolName: str(m.toolName),
+            input: this.#toolInputs.get(toolCallId) ?? {},
+            content: toolContent(m.content),
+            ...(m.details !== undefined ? { details: m.details } : {}),
+            ...(usage ? { usage } : {}),
+            timestamp: num(m.timestamp, timestamp),
+          },
+          !!m.isError,
+        );
       }
       default:
         return null; // bashExecution, custom, …: not part of the transcript view
     }
   }
 
-  #finishedAssistant(id: string, m: Loose, timestamp: number): AssistantItem {
+  #finishedAssistant(id: string, m: Loose, timestamp: number): FinishedAssistantItem {
     const usage = usageOf(m.usage);
-    const base: AssistantItem = {
+    const base = {
       id,
-      role: "assistant",
+      role: "assistant" as const,
       content: assistantContent(m.content),
       model: { provider: str(m.provider, this.state.model.provider), id: str(m.model, this.state.model.id) },
       ...(usage ? { usage } : {}),
       timestamp,
-      status: "complete",
-      stopReason: "stop",
     };
     const err = typeof m.errorMessage === "string" ? { errorMessage: m.errorMessage } : {};
     switch (m.stopReason) {
@@ -260,11 +269,11 @@ export class Projector {
       case "aborted":
         return { ...base, status: "aborted", stopReason: "aborted", ...err };
       case "length":
-        return { ...base, stopReason: "length" };
+        return { ...base, status: "complete", stopReason: "length" };
       case "toolUse":
-        return { ...base, stopReason: "toolUse" };
+        return { ...base, status: "complete", stopReason: "toolUse" };
       default:
-        return base;
+        return { ...base, status: "complete", stopReason: "stop" };
     }
   }
 
@@ -334,7 +343,7 @@ export class Projector {
           this.#streaming.set(item.id, item);
           progress({ type: "item_started", item });
         } else if (m.role === "assistant") {
-          const item: AssistantItem = {
+          const item: StreamingAssistantItem = {
             id: this.#mint("a"),
             role: "assistant",
             content: assistantContent(m.content),
@@ -354,7 +363,7 @@ export class Projector {
 
       case "message_update": {
         const id = this.#currentAssistant;
-        const item = id ? (this.#streaming.get(id) as AssistantItem | undefined) : undefined;
+        const item = id ? (this.#streaming.get(id) as StreamingAssistantItem | undefined) : undefined;
         const e = obj(ev.assistantMessageEvent);
         if (!item || !id || typeof e.type !== "string") break;
         const idx = num(e.contentIndex, item.content.length);
@@ -458,7 +467,7 @@ export class Projector {
         } else if (m.role === "assistant") {
           const id = this.#currentAssistant;
           if (id && this.#streaming.has(id)) {
-            const live = this.#streaming.get(id) as AssistantItem;
+            const live = this.#streaming.get(id) as StreamingAssistantItem;
             this.#streaming.delete(id);
             this.#currentAssistant = null;
             for (const b of Array.isArray(m.content) ? m.content : []) {
@@ -476,7 +485,7 @@ export class Projector {
 
       case "tool_execution_start": {
         const toolCallId = str(ev.toolCallId);
-        const item: ToolItem = {
+        const item: RunningToolItem = {
           id: this.#mint("t"),
           role: "tool",
           toolCallId,
@@ -494,7 +503,7 @@ export class Projector {
       }
       case "tool_execution_update": {
         const id = this.#toolItemIds.get(str(ev.toolCallId));
-        const item = id ? (this.#streaming.get(id) as ToolItem | undefined) : undefined;
+        const item = id ? (this.#streaming.get(id) as RunningToolItem | undefined) : undefined;
         if (!item) break;
         item.content = toolContent(obj(ev.partialResult).content);
         progress({ type: "item_updated", item: structuredClone(item) });
@@ -503,22 +512,23 @@ export class Projector {
       case "tool_execution_end": {
         const toolCallId = str(ev.toolCallId);
         const id = this.#toolItemIds.get(toolCallId);
-        const live = id ? (this.#streaming.get(id) as ToolItem | undefined) : undefined;
+        const live = id ? (this.#streaming.get(id) as RunningToolItem | undefined) : undefined;
         if (!live || !id) break;
         this.#streaming.delete(id);
         const result = obj(ev.result);
-        const item: ToolItem = {
-          id,
-          role: "tool",
-          toolCallId,
-          toolName: str(ev.toolName, live.toolName),
-          input: live.input,
-          content: toolContent(result.content),
-          ...(result.details !== undefined ? { details: result.details } : {}),
-          timestamp: live.timestamp,
-          status: ev.isError ? "error" : "complete",
-          isError: !!ev.isError,
-        };
+        const item = finishTool(
+          {
+            id,
+            role: "tool",
+            toolCallId,
+            toolName: str(ev.toolName, live.toolName),
+            input: live.input,
+            content: toolContent(result.content),
+            ...(result.details !== undefined ? { details: result.details } : {}),
+            timestamp: live.timestamp,
+          },
+          !!ev.isError,
+        );
         this.state.transcript.push(item);
         progress({ type: "item_finished", item });
         snap();

@@ -314,7 +314,10 @@ and pi's own client library drives the daemon with no adapter.
 | Local socket | Unix domain socket, or a Windows named pipe | Same-machine clients. Filesystem permissions are the boundary; no TLS, no token |
 
 `pi-client` ships the Unix-domain transport and a `ByteTransportFactory` seam, so a browser
-client writes about twenty lines of WebSocket factory and nothing else.
+client writes about twenty lines of WebSocket factory and nothing else. One caveat found in M3:
+pi-client's Unix helper refuses to run on Windows, although the named pipe itself accepts
+`net.connect(path)` — so a Windows JavaScript client brings its own twelve-line `net` transport,
+which the conformance suite doubles as an example of.
 
 ### 4.2 Message set
 
@@ -350,7 +353,11 @@ will not confirm.
 Pi's client already models this, so the daemon implements the server half. One **exclusive** lease
 or any number of **shared** leases per session; exclusive acquisition fails while any lease
 exists, shared fails while an exclusive one does, and the error is `session_locked`, reflected in
-`SessionSnapshot.locked` / `.attached`. A mutating command without a suitable lease is refused,
+`SessionSnapshot.locked` / `.attached`. One limit of the wire, found in M3: pi-protocol's `attach`
+carries no mode, so **every attachment over this surface is a shared lease**. Exclusivity is
+something pi-client enforces among its own leases, client-side; the daemon cannot grant it here,
+and `locked` on this surface reports an exclusive holder taken through Surface B (§5.1), where
+the request can say what it wants. A mutating command without a suitable lease is refused,
 not queued — two phones fighting over one turn is a thing to surface, not to serialise.
 Disconnection releases that connection's leases and **does not** stop a running turn (§8).
 
@@ -821,9 +828,9 @@ rather than assumed.
 **Serving clients.** Loopback by default; any other bind is explicit, and the first non-loopback
 bind on Windows raises a firewall prompt, so the CLI warns before it happens. The local endpoint
 is a Unix domain socket under the state directory, or a Windows named pipe
-(`\\.\pipe\pi-daemon`) — reachable through the same `net.connect(path)` seam `pi-client` uses,
-which is verified rather than assumed (§M1 in the plan), with loopback TCP as the fallback if it
-does not hold.
+(`\\.\pipe\pi-daemon`) — reachable through `net.connect(path)`, verified in M1 and M3, so no
+loopback-TCP fallback was needed. pi-client's own Unix transport helper declines to run on
+Windows (§4.1); the pipe is fine, the helper is not.
 
 **Being a service.** One `ServiceManager` interface: a systemd **user** unit plus
 `loginctl enable-linger` so it survives logout on a headless box; a LaunchAgent with `RunAtLoad`

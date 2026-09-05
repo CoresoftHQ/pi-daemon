@@ -5,7 +5,7 @@ with acceptance criteria that are testable rather than aspirational.
 
 **Status (2026-09-05): approved; M0 complete — GO (results in
 [`spike/README.md`](../spike/README.md)); M1 complete, CI matrix green on the `develop` branch;
-M2 complete. M3 is next.**
+M2 complete; M3 complete. M4 is next.**
 
 ---
 
@@ -162,6 +162,19 @@ relayed dialog blocking the runner and resolving on the first answer, with later
 ## M3 — Surface A
 
 **Purpose.** First genuine end-to-end: a real client, on another machine, driving a real session.
+
+**Result (2026-09-05):** `packages/daemon/src/serve` — a transport-neutral pi-protocol server
+core over a `ByteDuplex` seam (WebSocket with upgrade-time auth and subprotocol, the local
+socket / named pipe, and an in-memory pair for tests); the CBOR encoder over M2's state, with
+our item types now mirroring pi's discriminated unions so the structural pin is a real check;
+a single-root workspace resolver standing in for M6. The conformance suite drives the server
+with pi's own `PiClient` — 17 cases: hello and version refusal, create/attach/detach, streaming
+with authoritative snapshots and transient progress, `invalid_request` for a `cwd` outside the
+root, `busy`, `not_found`, `not_implemented` for a disabled command, an unattached mutation
+refused, oversized-frame disconnect, slow-consumer disconnect, reconnect with `revision`
+fencing, and both real transports. Two findings folded into the spec: the wire `attach` has no
+lease mode, so Surface A attachments are all shared (§4.4); and pi-client's Unix transport
+helper refuses Windows even though the named pipe works (§4.1). Auth is a static token until M4.
 
 **Build.** The pi-protocol server — WebSocket with binary frames, the local socket/named pipe,
 `hello` version negotiation, request correlation, mapping onto pi's seven error codes, frame-limit

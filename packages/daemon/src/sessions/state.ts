@@ -1,6 +1,10 @@
 // Canonical session state (spec §5.3): one producer, two encoders. These shapes are ours and
 // deliberately a superset of pi-protocol's SessionSnapshot, which `serve` maps onto without
 // importing anything from pi here (boundary rule: only runners and serve know pi exists).
+//
+// Assistant and tool items are discriminated unions exactly as pi's schemas are — a streaming
+// assistant item has no stopReason, a running tool item has isError false — so that the
+// encoder's structural pin against pi's types is a real check rather than a cast.
 
 export type Phase = "idle" | "turn" | "compaction" | "branch_summary" | "retry";
 export type ThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
@@ -48,9 +52,7 @@ export interface UserItem {
   timestamp: number;
 }
 
-export type AssistantStatus = "streaming" | "complete" | "error" | "aborted";
-
-export interface AssistantItem {
+interface AssistantBase {
   id: string;
   role: "assistant";
   content: Array<TextContent | ThinkingContent | ToolCallContent>;
@@ -58,15 +60,32 @@ export interface AssistantItem {
   responseModel?: string;
   usage?: Usage;
   timestamp: number;
-  status: AssistantStatus;
-  /** Present once finished. "stop" | "length" | "toolUse" for complete; "error" / "aborted" otherwise. */
-  stopReason?: "stop" | "length" | "toolUse" | "error" | "aborted";
+}
+export interface StreamingAssistantItem extends AssistantBase {
+  status: "streaming";
+}
+export interface CompleteAssistantItem extends AssistantBase {
+  status: "complete";
+  stopReason: "stop" | "length" | "toolUse";
+}
+export interface ErrorAssistantItem extends AssistantBase {
+  status: "error";
+  stopReason: "error";
   errorMessage?: string;
 }
+export interface AbortedAssistantItem extends AssistantBase {
+  status: "aborted";
+  stopReason: "aborted";
+  errorMessage?: string;
+}
+export type AssistantItem =
+  | StreamingAssistantItem
+  | CompleteAssistantItem
+  | ErrorAssistantItem
+  | AbortedAssistantItem;
+export type AssistantStatus = AssistantItem["status"];
 
-export type ToolStatus = "running" | "complete" | "error";
-
-export interface ToolItem {
+interface ToolBase {
   id: string;
   role: "tool";
   toolCallId: string;
@@ -76,17 +95,34 @@ export interface ToolItem {
   details?: unknown;
   usage?: Usage;
   timestamp: number;
-  status: ToolStatus;
-  isError: boolean;
 }
+export interface RunningToolItem extends ToolBase {
+  status: "running";
+  isError: false;
+}
+export interface CompleteToolItem extends ToolBase {
+  status: "complete";
+  isError: false;
+}
+export interface ErrorToolItem extends ToolBase {
+  status: "error";
+  isError: true;
+}
+export type ToolItem = RunningToolItem | CompleteToolItem | ErrorToolItem;
+export type ToolStatus = ToolItem["status"];
 
 export type TranscriptItem = UserItem | AssistantItem | ToolItem;
+
+/** What item_finished may carry: pi's schema admits neither a streaming assistant nor a running tool. */
+export type FinishedAssistantItem = Exclude<AssistantItem, StreamingAssistantItem>;
+export type FinishedToolItem = Exclude<ToolItem, RunningToolItem>;
+export type FinishedItem = FinishedAssistantItem | FinishedToolItem;
 
 /** Transient streaming hints (spec §4.2). Never reduced into authoritative state by the daemon. */
 export type Progress =
   | { type: "item_started"; item: TranscriptItem }
   | { type: "item_updated"; item: AssistantItem | ToolItem }
-  | { type: "item_finished"; item: AssistantItem | ToolItem }
+  | { type: "item_finished"; item: FinishedItem }
   | {
       type: "assistant_delta";
       messageId: string;
