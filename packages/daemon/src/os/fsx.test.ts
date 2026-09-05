@@ -10,7 +10,9 @@ before(() => {
   dir = mkdtempSync(path.join(tmpDir(), "pi-daemon-fsx-"));
 });
 after(() => {
-  rmSync(dir, { recursive: true, force: true });
+  // A directory that was being watched can still be held for a moment on Windows after the
+  // watcher closes; rmSync retries EBUSY / EPERM / ENOTEMPTY for exactly this.
+  rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
 });
 
 test("atomic write creates, then replaces, and leaves no temp files", () => {
@@ -51,13 +53,13 @@ test("watchDirectory reports a changed path, debounced", async () => {
     await new Promise((r) => setTimeout(r, 150));
     writeFileSync(path.join(wdir, "hello.txt"), "1");
     writeFileSync(path.join(wdir, "hello.txt"), "2");
+    // Batches may be coalesced or early (FSEvents can deliver the directory's own creation
+    // first); the contract is only that the path eventually appears. Wait for it.
     const t0 = Date.now();
-    while (events.length === 0 && Date.now() - t0 < 4000) await new Promise((r) => setTimeout(r, 50));
+    const seen = () => events.flat().some((p) => p.includes("hello.txt"));
+    while (!seen() && Date.now() - t0 < 4000) await new Promise((r) => setTimeout(r, 50));
     assert.ok(events.length >= 1, `expected an event (mode=${w.mode})`);
-    assert.ok(
-      events.flat().some((p) => p.includes("hello.txt")),
-      `paths: ${JSON.stringify(events)}`,
-    );
+    assert.ok(seen(), `paths: ${JSON.stringify(events)} (mode=${w.mode})`);
   } finally {
     w.close();
   }

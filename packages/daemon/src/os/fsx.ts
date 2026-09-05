@@ -9,6 +9,7 @@ import {
   fsyncSync,
   openSync,
   readFileSync,
+  realpathSync,
   renameSync,
   statSync,
   unlinkSync,
@@ -138,10 +139,23 @@ export function watchDirectory(
     if (!timer) timer = setTimeout(flush, debounceMs);
   };
 
+  // Watch the long, canonical path. On Windows a path containing an 8.3 short name
+  // (C:\Users\RUNNER~1\...) trips a libuv assertion in fs-event.c when events arrive with the
+  // long name — an abort, not an exception. realpath.native resolves the short name.
+  let target = dir;
   try {
-    const w = watch(dir, { recursive: options.recursive ?? false, persistent: false }, (_type, filename) => {
-      note(filename ? String(filename) : null);
-    });
+    target = realpathSync.native(dir);
+  } catch {
+    /* does not exist yet; watch() will report that itself */
+  }
+  try {
+    const w = watch(
+      target,
+      { recursive: options.recursive ?? false, persistent: false },
+      (_type, filename) => {
+        note(filename ? String(filename) : null);
+      },
+    );
     w.on("error", () => {
       /* fall through to polling below on next tick */
     });
