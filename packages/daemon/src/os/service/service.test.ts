@@ -36,10 +36,18 @@ test("launchd plist renders label, arguments, KeepAlive, and escaped env", () =>
   assert.match(plist, /StandardOutPath/);
 });
 
-test("windows task command line quotes arguments with spaces", () => {
-  const tr = new WindowsTaskServiceManager().render(def);
-  assert.ok(tr.includes(`"/opt/pi daemon/cli.js"`));
-  assert.ok(tr.endsWith("serve --bind loopback"));
+test("windows task renders a per-user AtLogOn registration with a Limited principal", () => {
+  const script = new WindowsTaskServiceManager().render({ ...def, env: undefined });
+  assert.match(script, /New-ScheduledTaskTrigger -AtLogOn -User \$me/);
+  assert.match(script, /-RunLevel Limited/);
+  assert.match(script, /-Argument '"\/opt\/pi daemon\/cli\.js" serve --bind loopback'/);
+  assert.match(script, /Register-ScheduledTask -TaskName 'pi-daemon-test'/);
+});
+
+test("windows task with environment variables wraps the action in a hidden PowerShell", () => {
+  const script = new WindowsTaskServiceManager().render(def);
+  assert.match(script, /-Execute 'powershell\.exe'/);
+  assert.match(script, /\$env:WEIRD = 'a b''c'/);
 });
 
 test("serviceManager picks the adapter for this platform", () => {
