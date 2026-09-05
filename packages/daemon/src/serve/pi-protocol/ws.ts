@@ -154,7 +154,7 @@ export function attachWebSocketListener(
       }
       wss.handleUpgrade(req, socket as net.Socket, head, (ws) => {
         const label = `ws:${req.socket.remoteAddress ?? "?"}:${req.socket.remotePort ?? "?"}`;
-        options.server.attachTransport(wsDuplex(ws, label));
+        options.server.attachTransport(wsDuplex(ws, label), { deviceId: auth.principal });
       });
     });
   });

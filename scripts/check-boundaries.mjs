@@ -37,7 +37,9 @@ for (const file of files) {
   const isTest = /\.test\.ts$/.test(file);
   const src = readFileSync(file, "utf8");
 
-  for (const m of src.matchAll(/^\s*(?:import|export)[^'"]*from\s*["']([^"']+)["']/gm)) {
+  // Tests may cross module boundaries — an integration test is supposed to. The rules bind
+  // shipped code only; the platform rule below still applies to tests.
+  for (const m of isTest ? [] : src.matchAll(/^\s*(?:import|export)[^'"]*from\s*["']([^"']+)["']/gm)) {
     const spec = m[1];
     if (/^(?:@earendil-works\/|.*pi-coding-agent)/.test(spec) && mod !== "runners" && mod !== "serve") {
       problems.push(`${file}: imports pi (${spec}) outside runners/serve`);

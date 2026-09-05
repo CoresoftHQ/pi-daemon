@@ -62,8 +62,14 @@ interface Connection {
   transport: ByteDuplex;
   helloDone: boolean;
   closed: boolean;
+  /** The authenticated device, when the transport carried one (the local endpoint carries none). */
+  deviceId: string | undefined;
   /** Per-session unsubscribe functions for the event fan-out. */
   subscriptions: Map<string, () => void>;
+}
+
+export interface TransportMeta {
+  deviceId?: string | undefined;
 }
 
 export class PiProtocolServer {
@@ -90,12 +96,13 @@ export class PiProtocolServer {
   }
 
   /** Adopt an already-authenticated transport. Authentication happened before this call (spec §4.3). */
-  attachTransport(transport: ByteDuplex): string {
+  attachTransport(transport: ByteDuplex, meta: TransportMeta = {}): string {
     const conn: Connection = {
       id: `conn_${randomUUID()}`,
       transport,
       helloDone: false,
       closed: false,
+      deviceId: meta.deviceId,
       subscriptions: new Map(),
     };
     this.#connections.set(conn.id, conn);
@@ -124,6 +131,18 @@ export class PiProtocolServer {
 
   closeAll(reason = "server closing"): void {
     for (const c of [...this.#connections.values()]) this.#close(c, reason);
+  }
+
+  /** Revocation (spec §6.1): a revoked device's live connections close within the second. */
+  closeForDevice(deviceId: string, reason = "device revoked"): number {
+    let n = 0;
+    for (const c of [...this.#connections.values()]) {
+      if (c.deviceId === deviceId) {
+        this.#close(c, reason);
+        n += 1;
+      }
+    }
+    return n;
   }
 
   #send(conn: Connection, message: ServerMessage): void {

@@ -5,7 +5,8 @@ with acceptance criteria that are testable rather than aspirational.
 
 **Status (2026-09-05): approved; M0 complete — GO (results in
 [`spike/README.md`](../spike/README.md)); M1 complete, CI matrix green on the `develop` branch;
-M2 complete; M3 complete. M4 is next.**
+M2 complete; M3 complete; M4 complete apart from its human security review and the manual
+browser-over-`tailscale cert` check. M5 is next.**
 
 ---
 
@@ -194,6 +195,21 @@ This suite is also the standing regression gate for every future `pi` version bu
 ## M4 — Access
 
 **Purpose.** Make the daemon safe to expose, and delete the static token.
+
+**Result (2026-09-05):** `packages/daemon/src/access` — device tokens `pid_<id>_<secret>` with
+sha256 at rest, constant-time verify, and a burned comparison for unknown ids; the device
+store written atomically at 0600 with the first device as owner; pairing codes (Crockford
+base32, 120 s, single-use, five attempts, one active, a `--confirm` hook, the QR payload with
+`fp` and `daemonId`); connect tickets (30 s, single-use, peer-bound, dropped on revocation); a
+fixed-window limiter with `peek`; the authenticator (bearer everywhere, tickets on upgrades
+only, failure lockout, tailnet identity additive with an optional allowlist that can refuse and
+never admit); `/v1/pair/redeem`, `/v1/connect-tickets`, `/v1/devices` with the last-owner
+guard; revocation closing a device's live protocol connections; TLS material for
+`self-signed` (pure-JS `selfsigned`, SANs, reuse while valid) and `tailscale-cert`, with the
+SPKI fingerprint. Tailnet identity comes from `tailscale status --json` rather than the
+LocalAPI socket, which spares three per-platform socket paths. 16 tests. **Not done:** the
+adversarial review is a human gate, and the browser-over-`wss://` check needs a tailnet with
+HTTPS certificates enabled, which CI does not have — both carried to M9's release checklist.
 
 **Build.** Device store (`pid_<id>_<secret>`, `sha256` at rest, constant-time compare, atomic
 owner-only writes); pairing codes (Crockford base32, 120 s, single-use, attempt-capped) and QR
