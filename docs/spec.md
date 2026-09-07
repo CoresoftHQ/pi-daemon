@@ -892,7 +892,10 @@ PTY addon did not load, and `files.write` moves there when the operator has swit
    die with it (§5.5) while sessions do not. Surviving a restart means a separate long-lived
    holder process — what tmux is — which is a real piece of infrastructure and a second thing to
    install as a service. Worth deciding whether "restart the daemon, lose your shells" is
-   acceptable for v1, since the alternative is not small.
+   acceptable for v1, since the alternative is not small. **Decided (2026-09-07): v1 keeps §5.5
+   as written.** Terminals survive clients leaving, not a daemon restart; `terminal.exited`
+   names the restart as the reason so a client can say so. An opt-in tmux-backed mode on POSIX
+   is the smallest later step if survival is ever wanted.
 3. **Runner reuse.** RPC mode has `new_session` and `switch_session`, so one process could serve
    several sessions in turn. That trades away the isolation §2.1 was chosen for, and is only
    worth revisiting if spawn latency or memory measures worse than expected.
