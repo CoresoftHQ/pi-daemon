@@ -6,7 +6,8 @@ with acceptance criteria that are testable rather than aspirational.
 **Status (2026-09-05): approved; M0 complete — GO (results in
 [`spike/README.md`](../spike/README.md)); M1 complete, CI matrix green on the `develop` branch;
 M2 complete; M3 complete; M4 complete apart from its human security review and the manual
-browser-over-`tailscale cert` check; M5 complete; M6 complete. M7 is next.**
+browser-over-`tailscale cert` check; M5 complete; M6 complete; M7 complete apart from the manual
+browser check. M8 is next.**
 
 ---
 
@@ -352,6 +353,40 @@ on all three platforms.
 
 **Purpose.** The ordinary shell, from a phone or a browser, and the one native addon done
 carefully.
+
+**Result (2026-09-07):** `terminals/` — `pty.ts` (the only file that knows node-pty: a lazy
+loader trying `@lydell/node-pty`, then `@homebridge/node-pty-prebuilt-multiarch`, then
+upstream; the outcome is remembered and surfaces as `terminals` in `features` or in `absent`
+with a message naming the addon; the backend is reported as conpty / winpty / forkpty),
+`screen.ts` (the screen-model interface with the `@xterm/headless` + `addon-serialize`
+implementation; `serialize` waits for the parser so a snapshot never misses the last chunk),
+`terminal.ts` (PTY plus screen plus attached sinks; input interleaved by arrival; resize
+coalesced at 50 ms, last wins; title from OSC 0/2; `close` = SIGHUP or ConPTY close → bounded
+grace → tree-kill of the process group or `taskkill /T`, run *even when the shell has already
+gone*, because the orphaned child is the case that matters), and `manager.ts` (the switch, the
+cap, the scrubbed environment, `terminal.created` / `exited` / `title`, `busy(workspaceId)` for
+worktree removal). In `serve`: `terminal-routes.ts` (open, list, inspect, resize, close with
+`?grace=`) and `terminal-stream.ts` (binary frames both ways, JSON control frames validated
+against the contract, snapshot first with bytes that arrive meanwhile queued behind it, per-
+connection buffer cap → `1008 slow consumer`, `exit` frame then `1000`). Contract: the shapes,
+both control-frame unions, three events, OpenAPI paths. **The PTY dependency is decided**:
+`@lydell/node-pty` as an optional dependency, after installing all three candidates in
+`node:22` and `node:24` slim images with no compiler — both forks load from prebuilds and open
+a shell; upstream `node-pty` fails to install there. 10 tests: the loader's report, the
+scrubbed environment (a `PI_DAEMON_TOKEN` never reaches the shell, `PI_DAEMON_PI` does), screen
+and title in the snapshot, resize coalescing, **an orphaned grandchild killed by close on
+Windows and Linux**, the switch / cap / missing-addon refusals; and over the wire: the
+refusals, open → snapshot-first attach → type → a second client whose snapshot shows what the
+first typed → resize seen by both → close with an `exit` frame, a paused client cut with
+`1008` while the terminal keeps running and a fresh attach gets a fresh snapshot, self-exit with
+the code, and 401/404 before upgrade. Run on Windows locally and on Linux in the slim Docker
+image; macOS waits for CI. **Measured** (Windows, daemon process only): an idle terminal with
+its screen at 120×40 costs about 13 MB RSS (0.5 MB heap; the rest is ConPTY and V8 external
+memory); a full 10 000-line scrollback at 120 columns adds about 4 MB heap. A Windows
+node-pty quirk worth knowing: the pid is 0 until ConPTY connects, so `create` waits for it.
+Not done here: the browser check with `ghostty-web` and `xterm.js` (manual, like M0's), and the
+throttled-to-1 KB/s variant of the slow-client test (the test pauses the socket instead, which
+is the same server-side condition).
 
 **Build.** Lazy loading of `node-pty` with the `terminals` capability flipping to `absent` on
 failure; spawn with shell selection, workspace cwd, `TERM`, and the scrubbed environment; the

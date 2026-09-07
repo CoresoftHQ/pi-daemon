@@ -12,6 +12,7 @@ export {
   validateSegment,
   WINDOWS_MAX_PATH,
 } from "./canon.ts";
+export { scrubEnv, scrubEnvStrings } from "./env.ts";
 export type { AtomicWriteOptions, DirectoryWatcher, WatchEvent, WatchOptions } from "./fsx.ts";
 export {
   ensureDir,

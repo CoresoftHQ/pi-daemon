@@ -4,6 +4,7 @@
 import type { Static } from "typebox";
 import { Type } from "typebox";
 import { Interrupted, ModelRef, Phase, Progress, ThinkingLevel } from "./session.ts";
+import { TerminalCreated, TerminalExited, TerminalTitle } from "./terminals.ts";
 import { GroupChanged, ProjectChanged, WorkspaceChanged, WorkspaceFilesChanged } from "./workspaces.ts";
 
 export const Scope = Type.String({
@@ -100,6 +101,9 @@ export const EventPayloads = {
   "project.changed": ProjectChanged,
   "group.changed": GroupChanged,
   "workspace.files_changed": WorkspaceFilesChanged,
+  "terminal.created": TerminalCreated,
+  "terminal.exited": TerminalExited,
+  "terminal.title": TerminalTitle,
   "device.paired": DevicePaired,
   "device.revoked": DeviceRevoked,
   "daemon.shutdown": DaemonShutdown,

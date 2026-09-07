@@ -21,5 +21,7 @@ export {
 } from "./pi-protocol/ws.ts";
 export type { ByteDuplex } from "./transport.ts";
 export { memoryPair } from "./transport.ts";
+export type { TerminalStreamOptions } from "./v1/terminal-stream.ts";
+export { attachTerminalStream, TERMINAL_STREAM_PATTERN } from "./v1/terminal-stream.ts";
 export type { ResolvedWorkspace, WorkspaceResolver } from "./workspace-resolver.ts";
 export { registryResolver, singleRootResolver } from "./workspace-resolver.ts";

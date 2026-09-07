@@ -33,6 +33,14 @@ import {
 } from "./requests.ts";
 import { SessionSnapshot, SessionSummary, TranscriptItem } from "./session.ts";
 import {
+  CreateTerminalRequest,
+  ResizeTerminalRequest,
+  TerminalClientControl,
+  TerminalList,
+  TerminalResponse,
+  TerminalServerControl,
+} from "./terminals.ts";
+import {
   CreateWorktreeRequest,
   DiffResponse,
   FileTreeResponse,
@@ -115,6 +123,8 @@ export function openApiDocument(info: { version: string } = { version: "0.1.0" }
         SnapshotRequired,
         Capabilities,
         ErrorBody,
+        TerminalClientControl,
+        TerminalServerControl,
       },
     },
     paths: {
@@ -493,6 +503,53 @@ export function openApiDocument(info: { version: string } = { version: "0.1.0" }
           summary: "Delete the grouping; members stay registered",
           auth: "member",
           responses: { 200: "empty" },
+        }),
+      },
+      "/v1/workspaces/{id}/terminals": {
+        parameters: [sessionId],
+        post: operation({
+          summary: "Open a terminal: the operator's shell in the workspace, or argv",
+          auth: "member",
+          request: CreateTerminalRequest,
+          responses: { 201: TerminalResponse },
+        }),
+      },
+      "/v1/terminals": {
+        get: operation({
+          summary: "Every terminal; ?workspace=",
+          auth: "member",
+          responses: { 200: TerminalList },
+        }),
+      },
+      "/v1/terminals/{id}": {
+        parameters: [sessionId],
+        get: operation({
+          summary: "One terminal: size, title, status, exit",
+          auth: "member",
+          responses: { 200: TerminalResponse },
+        }),
+        delete: operation({
+          summary: "Close the PTY, wait ?grace= ms (default 1500), then tree-kill",
+          auth: "member",
+          responses: { 200: TerminalResponse },
+        }),
+      },
+      "/v1/terminals/{id}/resize": {
+        parameters: [sessionId],
+        post: operation({
+          summary: "Resize; last resize wins",
+          auth: "member",
+          request: ResizeTerminalRequest,
+          responses: { 200: TerminalResponse },
+        }),
+      },
+      "/v1/terminals/{id}/stream": {
+        parameters: [sessionId],
+        get: operation({
+          summary:
+            "WebSocket: binary frames are PTY bytes both ways; text frames are TerminalClientControl / TerminalServerControl. First server frame is a snapshot",
+          auth: "member",
+          responses: { 101: "empty" },
         }),
       },
       "/v1/events": {

@@ -192,7 +192,12 @@ no pure-JavaScript way to open one. The daemon uses `node-pty`, whose install tr
 binary first and compiles only if none matches — the same dependency Orca ships, prebuilt. M0
 found that upstream 1.1.0 ships prebuilds for Windows and macOS only; **on Linux it compiles**,
 so honouring the guarantee below means shipping Linux prebuilds ourselves, using a multiarch
-fork, or moving the PTY into the sidecar — a decision M1 makes before M7 depends on it. It is
+fork, or moving the PTY into the sidecar. **Decided in M7:** the dependency is
+`@lydell/node-pty` — the same API, with per-platform prebuild packages for Linux (glibc and
+musl, x64 and arm64), macOS, and Windows, verified to install and open a shell on Node 22 and
+24 in a Linux image with no compiler present. It is an *optional* dependency, and the loader
+also accepts `@homebridge/node-pty-prebuilt-multiarch` (verified the same way) and upstream
+`node-pty` if an operator installs one of those instead. It is
 loaded lazily and only by `terminals`; if the addon is missing or fails to load, the daemon runs
 without it and `capabilities.absent` lists `terminals`. So the install guarantee is narrower than
 "no native code" and is stated exactly: **no compile step on the three mainstream platforms, and
@@ -404,6 +409,7 @@ broad without being deep.
 | `PUT /v1/workspaces/:id/file` · `DELETE /v1/workspaces/:id/file` | Create or replace, and delete, with `If-Match` (§5.4) |
 | `POST /v1/workspaces/:id/mkdir` · `POST /v1/workspaces/:id/move` | Directories and renames, inside the workspace (§5.4) |
 | `POST /v1/workspaces/:id/terminals` · `GET /v1/terminals` · `GET /v1/terminals/:id` | Open and inspect terminals (§5.5) |
+| `POST /v1/terminals/:id/resize` · `DELETE /v1/terminals/:id` | Resize without the stream; close with `?grace=` then tree-kill (§5.5) |
 | `DELETE /v1/terminals/:id` · `POST /v1/terminals/:id/resize` | Close and resize (§5.5) |
 | `wss://…/v1/terminals/:id/stream` | The terminal's bytes, both directions (§5.5) |
 | `GET /v1/sessions` | Session-directory enumeration, joined to live runner state |

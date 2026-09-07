@@ -75,14 +75,9 @@ export class RunnerCapError extends Error {
 }
 
 /** Drop everything of ours, and anything that looks like a secret, from a runner's environment. */
-export function scrubEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
-  const out: NodeJS.ProcessEnv = {};
-  for (const [k, v] of Object.entries(env)) {
-    if (/^PI_DAEMON_/i.test(k) && !/^PI_DAEMON_PI$/i.test(k)) continue;
-    out[k] = v;
-  }
-  return out;
-}
+import { scrubEnv } from "../os/env.ts";
+
+export { scrubEnv };
 
 export class SessionHost {
   readonly log: EventLog;

@@ -26,9 +26,14 @@
     "build": "tsc -b"
   },
   "dependencies": {
+    "@coresoft-hq/pi-daemon-contract": "0.1.0",
     "@earendil-works/pi-protocol": "0.84.4",
+    "@xterm/addon-serialize": "^0.14.0",
+    "@xterm/headless": "^6.0.0",
     "selfsigned": "^5.5.0",
-    "ws": "^8.21.3",
-    "@coresoft-hq/pi-daemon-contract": "0.1.0"
+    "ws": "^8.21.3"
+  },
+  "optionalDependencies": {
+    "@lydell/node-pty": "^1.2.0-beta.15"
   }
 }

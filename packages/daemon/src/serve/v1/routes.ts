@@ -20,12 +20,14 @@ import type { SessionHost } from "../../sessions/host.ts";
 import { RunnerCapError, SessionLockedError, SessionNotFoundError } from "../../sessions/host.ts";
 import type { Session } from "../../sessions/session.ts";
 import { SessionBusyError, SessionNotLiveError } from "../../sessions/session.ts";
+import type { TerminalManager } from "../../terminals/manager.ts";
 import type { WorkspaceService } from "../../workspaces/service.ts";
 import type { WorkspaceResolver } from "../workspace-resolver.ts";
 import type { EventStreamOptions } from "./events.ts";
 import { handleEventSse } from "./events.ts";
 import { toJsonSnapshot, toJsonSummary } from "./json-encode.ts";
 import { body, HttpError, Router, sendJson } from "./router.ts";
+import { addTerminalRoutes } from "./terminal-routes.ts";
 import { addWorkspaceRoutes } from "./workspace-routes.ts";
 
 export interface V1RoutesOptions {
@@ -34,6 +36,8 @@ export interface V1RoutesOptions {
   /** M6: projects, groups, worktrees, and the file surface. Absent means those routes are not served. */
   workspaceService?: WorkspaceService | undefined;
   maxFileBytes?: number | undefined;
+  /** M7: terminals. Absent means those routes are not served. */
+  terminals?: TerminalManager | undefined;
   access: AccessControl;
   capabilities: () => Capabilities;
   version: string;
@@ -247,6 +251,10 @@ export function createV1Router(options: V1RoutesOptions): Router {
       maxFileBytes: options.maxFileBytes,
       log: options.log,
     });
+  }
+
+  if (options.terminals) {
+    addTerminalRoutes(router, { manager: options.terminals, resolver: options.workspaces, log: options.log });
   }
 
   return router;

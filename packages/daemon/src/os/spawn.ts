@@ -3,6 +3,7 @@
 
 import { type ChildProcess, spawn, spawnSync } from "node:child_process";
 import { accessSync, constants, existsSync, statSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { platform } from "./paths.ts";
 
@@ -157,4 +158,22 @@ export function pidAlive(pid: number): boolean {
   } catch (err) {
     return (err as NodeJS.ErrnoException).code === "EPERM";
   }
+}
+
+/**
+ * Which pseudo-terminal the platform gives node-pty (spec §9): ConPTY on Windows 10 1809
+ * (build 17763) and later, the bundled winpty before that, forkpty elsewhere.
+ */
+export function ptyBackend(): "conpty" | "winpty" | "forkpty" {
+  if (platform !== "win32") return "forkpty";
+  const build = Number(os.release().split(".")[2] ?? 0);
+  return build >= 17763 ? "conpty" : "winpty";
+}
+
+/**
+ * What to send a PTY's shell when closing it: SIGHUP where signals exist. On Windows node-pty
+ * closes the pseudoconsole instead, which ends the console session for everything attached.
+ */
+export function hangupSignal(): string | undefined {
+  return platform === "win32" ? undefined : "SIGHUP";
 }
