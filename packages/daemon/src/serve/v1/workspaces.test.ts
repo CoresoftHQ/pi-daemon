@@ -360,7 +360,10 @@ test("files: tree, file with ETag/Range/If-None-Match, diff, and the write route
   });
   assert.equal(put.status, 200, JSON.stringify(put.body));
   assert.equal(readFileSync(path.join(repo, "README.md"), "utf8"), "# changed\n");
-  const echo = events.slice(before).find((e) => e.type === "workspace.files_changed");
+  // the watcher may also report the big.bin written above, so look for the daemon's own echo
+  const echo = events
+    .slice(before)
+    .find((e) => e.type === "workspace.files_changed" && (e.payload as { origin: string }).origin === "api");
   assert.ok(echo, "the daemon's own write is announced");
   assert.deepEqual(echo.payload, {
     workspaceId: mainId,
