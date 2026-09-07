@@ -1,6 +1,6 @@
 {
   "name": "@coresoft-hq/pi-daemon-contract",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "The pi-daemon /v1 wire contract: request and response shapes, the event envelope, runtime schemas, and generated OpenAPI. Consumed by the daemon and by every client.",
   "license": "MIT",
   "type": "module",

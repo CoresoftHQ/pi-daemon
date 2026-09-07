@@ -374,7 +374,12 @@ export async function startDaemon(options: StartOptions): Promise<RunningDaemon>
     logger: log,
     maxBufferedBytes: config.limits.maxBufferedBytes,
   });
-  const protoWss = attachWebSocketListener(server, { server: protocol, authenticate: upgradeAuth, log });
+  const protoWss = attachWebSocketListener(server, {
+    server: protocol,
+    authenticate: upgradeAuth,
+    maxFrameLength: config.limits.maxFrameLength,
+    log,
+  });
   const termWss = attachTerminalStream(server, {
     manager: terminals,
     authenticate: upgradeAuth,

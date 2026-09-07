@@ -116,6 +116,8 @@ export interface WebSocketListenerOptions {
   server: PiProtocolServer;
   authenticate: UpgradeAuthenticator;
   path?: string | undefined;
+  /** The server's frame limit; WebSocket messages above it are refused before decoding. */
+  maxFrameLength?: number | undefined;
   log?: Logger | undefined;
 }
 
@@ -130,6 +132,9 @@ export function attachWebSocketListener(
   const path = options.path ?? PI_PROTOCOL_PATH;
   const wss = new WebSocketServer({
     noServer: true,
+    // One WebSocket message may carry several frames, but never more than the frame limit
+    // plus headers is worth buffering before the decoder sees it.
+    maxPayload: (options.maxFrameLength ?? 8 * 1024 * 1024) + 4,
     handleProtocols: (protocols) =>
       protocols.has(PI_PROTOCOL_SUBPROTOCOL) ? PI_PROTOCOL_SUBPROTOCOL : false,
   });

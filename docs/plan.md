@@ -7,7 +7,8 @@ with acceptance criteria that are testable rather than aspirational.
 [`spike/README.md`](../spike/README.md)); M1 complete, CI matrix green on the `develop` branch;
 M2 complete; M3 complete; M4 complete apart from its human security review and the manual
 browser-over-`tailscale cert` check; M5 complete; M6 complete; M7 complete apart from the manual
-browser check; M8 complete. M9 is next.**
+browser check; M8 complete; M9 complete apart from the 24-hour soak, the human security review,
+and the documentation review — 1.0.0 is prepared on `develop`, untagged.**
 
 ---
 
@@ -460,6 +461,39 @@ not installed, clock skew.
 ## M9 — Hardening and release
 
 **Purpose.** Earn the version number.
+
+**Result (2026-09-07):** Both ends of the pi range are now in CI: a `pi-compat` job installs
+the real `@earendil-works/pi-coding-agent` at 0.84.0 and 0.85.1 and runs the runner, the host,
+and the pi-protocol server against it (`runners/pi-compat.test.ts`; no provider needed).
+**Fuzzers**: `serve/pi-protocol/fuzz.test.ts` fires seventeen attacks per round at the real
+server over the in-memory transport — truncation, coalescing, byte-at-a-time, oversized and
+4 GiB declared lengths, nesting to 5 000, malformed UTF-8, unknown properties on hello and on a
+request, wrong top-level type, empty frame, request before hello, random bytes — and asserts
+nothing escapes, every provably-bad stream is closed, and a good client is served afterwards;
+`runners/jsonl.fuzz.test.ts` chunks records through multi-byte characters and `U+2028`/
+`U+2029` with garbage lines interleaved and asserts the exact record sequence and no phantom
+record from random bytes. Both are seeded and bounded (`PI_DAEMON_FUZZ_ITERATIONS` to go
+longer). **Soak and load**: `scripts/soak.mjs` runs the real composition root with the fake pi —
+runners at the cap with LRU eviction and deliberate crashes, terminals at the cap with one
+streaming to nobody, five event clients and five terminal clients flapping every two seconds —
+sampling memory, handles, and child processes, and failing on orphans or growth. It found three
+real defects: node-pty leaves one pipe handle open per closed terminal on Windows; a terminal
+whose shell exits on its own kept its ConPTY (and conhost) alive until the record was deleted;
+and, from the run itself, the Windows pipe names were per user only, so two daemons with
+different homes collided. All fixed (`Terminal.releasePty`, pipe names hashed with the state
+directory). One minute at full load on Windows: 162 prompts, 93 evictions, 9 crashes, RSS
+274 → 303 MB, zero orphans after stop, handles back to baseline; runner churn alone is flat at
+94 MB. **Review**: JSON bodies capped at 16 KiB, redeem and ticket rate limits on by default,
+no header or token ever logged (redaction covers the secret-looking keys); found and fixed the
+WebSocket servers accepting `ws`'s default 100 MiB messages (now 64 KiB for events, 1 MiB for
+terminal input, the frame limit for pi-protocol) and unrestricted socket-file modes (now 0600).
+**Operator documentation**: [`docs/operating.md`](operating.md) — the §7.1 statement, a threat
+table, install, tailnet and TLS, pairing, what the daemon does not decide, recovery from a lost
+owner device, limits, upgrading. **Release**: both packages at `1.0.0`, [`CHANGELOG.md`](../CHANGELOG.md)
+with the platform and capability matrices, the supported pi range, and the measurements. Not
+done by me: the 24-hour soak (the script is there; `--minutes 1440`), the human security
+review, and documentation review by someone who did not write it — the three acceptance items
+that need a person. Not tagged or published: that is a `main` decision.
 
 - Full CI matrix: three platforms, two Node minors, and the **oldest and newest supported `pi`**
   — the version range in `capabilities` is a promise and needs testing at both ends.

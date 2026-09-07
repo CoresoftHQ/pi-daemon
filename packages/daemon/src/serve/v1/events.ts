@@ -74,7 +74,8 @@ export interface EventStreamOptions {
 
 /** WebSocket: JSON text frames. Client control frames change subscriptions without reconnecting. */
 export function attachEventWebSocket(httpServer: http.Server, options: EventStreamOptions): WebSocketServer {
-  const wss = new WebSocketServer({ noServer: true });
+  // Client frames here are subscription changes and pings; nothing legitimate is large.
+  const wss = new WebSocketServer({ noServer: true, maxPayload: 64 * 1024 });
   const refuse = (socket: net.Socket, status: number, message: string) => {
     socket.write(`HTTP/1.1 ${status} ${message}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n`);
     socket.destroy();

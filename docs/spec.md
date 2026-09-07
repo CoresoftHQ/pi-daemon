@@ -842,7 +842,8 @@ rather than assumed.
 **Serving clients.** Loopback by default; any other bind is explicit, and the first non-loopback
 bind on Windows raises a firewall prompt, so the CLI warns before it happens. The local endpoint
 is a Unix domain socket under the state directory, or a Windows named pipe
-(`\\.\pipe\pi-daemon`) — reachable through `net.connect(path)`, verified in M1 and M3, so no
+(`\\.\pipe\pi-daemon-<user>-<hash of the state directory>`, since pipes have no directory and
+two daemons with different homes must not share one) — reachable through `net.connect(path)`, verified in M1 and M3, so no
 loopback-TCP fallback was needed. pi-client's own Unix transport helper declines to run on
 Windows (§4.1); the pipe is fine, the helper is not.
 

@@ -190,6 +190,7 @@ export class TerminalManager {
   }
 
   #onExit(t: Terminal, exit: TerminalExit): void {
+    t.releasePty();
     this.#o.log?.info("terminal exited", {
       terminalId: t.id,
       code: exit.code,

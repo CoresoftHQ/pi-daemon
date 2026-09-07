@@ -32,3 +32,26 @@ jobs:
         env:
           # Service-manager round-trips register a real user service on the runner. Opt in.
           PI_DAEMON_SERVICE_TESTS: "1"
+
+  # The supported pi range (capabilities.pi.supported) is a promise: test both ends with the
+  # real pi, no provider needed (RPC mode answers get_state and lists models without one).
+  pi-compat:
+    name: pi ${{ matrix.pi }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        pi: ["0.84.0", "0.85.1"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm i -g @earendil-works/pi-coding-agent@${{ matrix.pi }}
+      - run: pi --version
+      - run: node --conditions=development --test --test-force-exit "packages/daemon/src/runners/pi-compat.test.ts" "packages/daemon/src/runners/runner.test.ts"
+        env:
+          PI_DAEMON_REAL_PI: "1"

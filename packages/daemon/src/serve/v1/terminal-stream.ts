@@ -30,7 +30,8 @@ export function attachTerminalStream(
   httpServer: http.Server,
   options: TerminalStreamOptions,
 ): WebSocketServer {
-  const wss = new WebSocketServer({ noServer: true });
+  // Input frames are keystrokes and pastes; a paste is not a megabyte.
+  const wss = new WebSocketServer({ noServer: true, maxPayload: 1024 * 1024 });
   const limit = options.maxBufferedBytes ?? 4 * 1024 * 1024;
   const refuse = (socket: net.Socket, status: number, message: string) => {
     socket.write(`HTTP/1.1 ${status} ${message}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n`);

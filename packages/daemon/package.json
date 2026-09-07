@@ -1,6 +1,6 @@
 {
   "name": "pi-daemon",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Cross-platform daemon that runs Pi Coding Agent sessions as supervised subprocesses and serves them over pi's remote-session protocol and a JSON API",
   "license": "MIT",
   "type": "module",
@@ -26,7 +26,7 @@
     "build": "tsc -b"
   },
   "dependencies": {
-    "@coresoft-hq/pi-daemon-contract": "0.1.0",
+    "@coresoft-hq/pi-daemon-contract": "1.0.0",
     "@earendil-works/pi-protocol": "0.84.4",
     "@xterm/addon-serialize": "^0.14.0",
     "@xterm/headless": "^6.0.0",

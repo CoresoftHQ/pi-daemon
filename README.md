@@ -64,8 +64,11 @@ Everything it keeps lives under one directory per platform, or under `PI_DAEMON_
 
 ## Status
 
-Milestones M0–M8 of the [plan](docs/plan.md) are implemented on the `develop` branch, with CI
-across Linux, macOS, and Windows on Node 22 and 24. M9 (hardening and release) is next.
+All ten milestones of the [plan](docs/plan.md) are implemented on the `develop` branch, with CI
+across Linux, macOS, and Windows on Node 22 and 24, and against pi at both ends of the supported
+range. `1.0.0` is prepared there ([CHANGELOG](CHANGELOG.md)) and waits on the human reviews and
+the 24-hour soak before it is tagged. Read [docs/operating.md](docs/operating.md) before exposing
+a daemon to a network.
 
 - [Overview](docs/overview.md) — one page: how the daemon works and how clients integrate.
 - [Specification](docs/spec.md) — requirements, the runner architecture, both wire surfaces,
