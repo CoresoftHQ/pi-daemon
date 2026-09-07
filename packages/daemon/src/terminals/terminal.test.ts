@@ -88,7 +88,12 @@ test("the screen keeps output and the title; the snapshot replays both", { skip 
   });
   assert.equal(term.status, "running");
   assert.ok(events.some((e) => e.type === "terminal.created" && e.scope === "workspace:ws"));
-  await waitFor(t, () => (term.title === "my-title" ? true : undefined));
+  // the title arrives in the first chunk; the lines may still be in flight, so wait for the last one
+  let out = "";
+  term.attach((b) => {
+    out += b.toString();
+  });
+  await waitFor(t, () => (term.title === "my-title" && out.includes("line 30") ? true : undefined));
   const data = await term.snapshot();
   assert.ok(data.includes("line 30"), "the screen has the last line");
   assert.ok(data.includes("line 1"), "and the scrollback has the first");
