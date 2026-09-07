@@ -481,9 +481,12 @@ real defects: node-pty leaves one pipe handle open per closed terminal on Window
 whose shell exits on its own kept its ConPTY (and conhost) alive until the record was deleted;
 and, from the run itself, the Windows pipe names were per user only, so two daemons with
 different homes collided. All fixed (`Terminal.releasePty`, pipe names hashed with the state
-directory). One minute at full load on Windows: 162 prompts, 93 evictions, 9 crashes, RSS
-274 → 303 MB, zero orphans after stop, handles back to baseline; runner churn alone is flat at
-94 MB. **Review**: JSON bodies capped at 16 KiB, redeem and ticket rate limits on by default,
+directory). Five minutes at full load on Windows with a forced GC before every sample: retained
+heap flat between 20 and 30 MB, RSS 270 → 377 MB (reserved heap and ConPTY buffers; 272 MB
+after stop), zero orphans and zero open handles after stop, the event ring bounded; runner
+churn alone is flat at 94 MB. An earlier run without the forced GC showed RSS climbing with
+V8's reserved heap, which is why the sampling was changed: growth in reserved heap with flat
+retained heap is sizing, not a leak. **Review**: JSON bodies capped at 16 KiB, redeem and ticket rate limits on by default,
 no header or token ever logged (redaction covers the secret-looking keys); found and fixed the
 WebSocket servers accepting `ws`'s default 100 MiB messages (now 64 KiB for events, 1 MiB for
 terminal input, the frame limit for pi-protocol) and unrestricted socket-file modes (now 0600).

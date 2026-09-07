@@ -61,10 +61,12 @@ event replay ring, 8 MiB frames.
   10 000-line scrollback at 120 columns adds about 4 MB.
 - Soak (fake pi, Windows): 8 runners at the cap with LRU eviction and deliberate crashes,
   16 terminals at the cap with one streaming to nobody, five event clients and five terminal
-  clients flapping every two seconds. One minute: 162 prompts, 93 evictions, 9 crashes,
-  RSS 274 → 303 MB, zero orphaned processes after stop, handles back to baseline. Runner churn
-  alone over a minute: RSS flat at 94 MB. The 24-hour run is the operator's to launch:
-  `node --conditions=development scripts/soak.mjs --minutes 1440`.
+  clients flapping every two seconds. Five minutes with a forced GC before every sample:
+  retained heap flat between 20 and 30 MB throughout; RSS 270 → 377 MB (V8's reserved heap and
+  ConPTY buffers, back to 272 MB after stop); zero orphaned processes and zero open handles after
+  stop; the event ring stayed bounded. Runner churn alone over a minute: RSS flat at 94 MB. The
+  24-hour run is the operator's to launch:
+  `node --conditions=development --expose-gc scripts/soak.mjs --minutes 1440`.
 - Fuzzing: framed CBOR (truncation, coalescing, oversized and 4 GiB declared lengths, nesting
   to 5 000, malformed UTF-8, unknown properties, random bytes) and JSONL (random chunking through
   multi-byte characters, `U+2028`/`U+2029`, garbage lines) — no crash, no phantom record, and a

@@ -89,6 +89,8 @@ const counters = {
 };
 const errors = [];
 const fail = (what, err) => {
+  // our own flapper tearing down a socket that had not finished connecting is not the daemon's fault
+  if (String(err instanceof Error ? err.message : err).includes("before the connection was established")) return;
   counters.errors += 1;
   if (errors.length < 20) errors.push(`${what}: ${err instanceof Error ? err.message : String(err)}`);
 };
