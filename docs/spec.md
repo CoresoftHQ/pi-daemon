@@ -799,7 +799,11 @@ promises `interrupted` and not resume. The contract is shaped so resume can arri
 **Shutdown.** Stop accepting connections, emit `daemon.shutdown`, give runners a bounded drain
 window (default 10 s) to reach a persisted boundary, then tree-kill, then release the lock.
 Windows has no `SIGTERM`, so this is driven by `SIGINT` / `SIGBREAK`, a loopback control
-endpoint, and the service manager's stop — never by assuming a signal arrives.
+endpoint, and the service manager's stop — never by assuming a signal arrives. The control
+endpoint is a second local socket or named pipe (`pi-daemon-control`) speaking newline-delimited
+JSON, authenticated by filesystem permissions like the local pi-protocol endpoint; it is how
+`pi-daemon stop`, `status`, `pair`, and `devices` reach a running daemon, and how a second
+`serve` confirms the lock holder is alive before refusing.
 
 ---
 

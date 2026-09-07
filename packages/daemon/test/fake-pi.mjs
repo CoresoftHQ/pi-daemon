@@ -15,6 +15,10 @@ import { randomUUID } from "node:crypto";
 import readline from "node:readline";
 
 const args = process.argv.slice(2);
+if (args.includes("--version")) {
+  process.stdout.write("0.84.4\n");
+  process.exit(0);
+}
 const flag = (name) => {
   const i = args.indexOf(name);
   return i >= 0 ? args[i + 1] : undefined;

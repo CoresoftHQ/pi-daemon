@@ -47,9 +47,25 @@ once by scanning a QR code carrying a short-lived single-use code and the daemon
 fingerprint, then exchanges it for its own revocable device token. A tailnet is the expected way
 in, but it is defence in depth — never a substitute for the token.
 
+## Running it
+
+```sh
+npm install && npm run build          # Node >= 22.19; no compiler needed on Linux, macOS, Windows
+node packages/daemon/dist/cli/main.js doctor     # pi on PATH? provider signed in? port free?
+node packages/daemon/dist/cli/main.js serve --foreground
+```
+
+`pi-daemon install` registers it with the OS (systemd user unit, LaunchAgent, or a logon task)
+and starts it; `pi-daemon pair` prints the QR code a client scans; `pi-daemon status`, `logs -f`,
+`stop`, `config set bind tailscale`, and `devices create --name n8n` do what they say. The daemon
+listens on loopback with no TLS until you set `bind` to `tailscale` (a publicly trusted
+certificate for the MagicDNS name) or an explicit address (self-signed, fingerprint in the QR).
+Everything it keeps lives under one directory per platform, or under `PI_DAEMON_HOME`.
+
 ## Status
 
-Specification stage. Nothing is implemented.
+Milestones M0–M8 of the [plan](docs/plan.md) are implemented on the `develop` branch, with CI
+across Linux, macOS, and Windows on Node 22 and 24. M9 (hardening and release) is next.
 
 - [Overview](docs/overview.md) — one page: how the daemon works and how clients integrate.
 - [Specification](docs/spec.md) — requirements, the runner architecture, both wire surfaces,

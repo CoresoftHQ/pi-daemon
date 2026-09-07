@@ -7,7 +7,7 @@ with acceptance criteria that are testable rather than aspirational.
 [`spike/README.md`](../spike/README.md)); M1 complete, CI matrix green on the `develop` branch;
 M2 complete; M3 complete; M4 complete apart from its human security review and the manual
 browser-over-`tailscale cert` check; M5 complete; M6 complete; M7 complete apart from the manual
-browser check. M8 is next.**
+browser check; M8 complete. M9 is next.**
 
 ---
 
@@ -410,6 +410,36 @@ addon. Memory per idle terminal is measured and recorded in the release notes.
 ## M8 — Operations
 
 **Purpose.** The daemon behaves like a daemon.
+
+**Result (2026-09-07):** `cli/` — `config.ts` (one JSON file with every key defaulted, unknown
+keys and out-of-range values named on load; `pi-daemon config get|set|unset|path`),
+`daemon.ts` (the composition root: directories, the rotating logger, bind and TLS resolution
+from `bind`/`tls` with Tailscale's address and MagicDNS name, the lock taken *after* the port
+is chosen and probed through the control endpoint rather than by trusting a pid, identity,
+devices, pairing, the registry-backed resolver, the session host with the operator's runner
+flags, terminals, the capability document computed from real state — `files.write`,
+`worktrees`, and `terminals` move between `features` and `absent` by fact — the three
+upgrade handlers behind one guard, the local pi-protocol endpoint, and shutdown: refuse new
+connections, emit `daemon.shutdown`, close every client, drain runners and terminals, release
+the lock), `control.ts` (the loopback control endpoint: newline JSON with `event`/`ask` lines,
+so `pair --confirm` can be answered from the terminal that asked), `doctor.ts` (eleven probes,
+each injectable, every verdict with a fix line), `qr.ts` (`uqr`, pure JS), and `main.ts`
+(`serve`, `install --dry-run|--boot-time|--linger`, `uninstall`, `start`, `stop`, `status`,
+`logs -n|-f`, `pair --confirm|--list|--revoke`, `devices create|list|revoke`, `doctor`,
+`config`; exit codes 2 for usage/config, 3 for "not running" or "already running"). The
+build now emits `dist/cli/main.js` as the `bin`, CI builds it and runs `--version`, and
+`verify` includes the build. 9 tests: config merge/validate/round-trip, the doctor's verdicts
+for every condition the plan lists (old Node, no pi, pi out of range, no provider, port in
+use, unwritable directory, missing Tailscale where needed, expiring certificate, service not
+installed, clock skew, no PTY), and the daemon end to end — health and capabilities, a second
+instance refused naming pid and port, pairing over the control endpoint redeemed over HTTP,
+`--confirm` round-tripping a y/N, service tokens created and revoked, stop with the shutdown
+event and the lock gone — plus the CLI itself in-process: `config`, `status`, `install
+--dry-run`, `serve`, `pair` with a rendered QR, `logs`, `stop`. Not done here: the drain
+window is the runner's own 10 s grace and `drainMs` is recorded but not yet plumbed into it;
+the real-service logout/logon survival check and `kill -9` recovery were verified in M1/M3 and
+are not re-run per platform in M8; eviction under real memory pressure and rotation "in
+anger" are M9's soak, not this milestone's tests.
 
 **Build.** The CLI: `serve`, `install`, `uninstall`, `start`, `stop`, `status`, `logs`, `pair`,
 `doctor`. Single-instance enforcement; graceful shutdown with the drain window, `daemon.shutdown`,

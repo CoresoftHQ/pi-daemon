@@ -26,6 +26,8 @@ jobs:
       - run: npm run typecheck
       - run: npm run check:boundaries
       - run: npm run lint
+      - run: npm run build
+      - run: node packages/daemon/dist/cli/main.js --version
       - run: npm test
         env:
           # Service-manager round-trips register a real user service on the runner. Opt in.

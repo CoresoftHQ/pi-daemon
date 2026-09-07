@@ -29,7 +29,16 @@ export { acquireLock, LockHeldError } from "./lock.ts";
 export type { LogFields, Logger, LoggerOptions, LogLevel } from "./log.ts";
 export { createLogger, redactSecrets } from "./log.ts";
 export type { AppDirs, PathsEnv, Platform } from "./paths.ts";
-export { appDirs, homeDir, piAgentDir, piSessionsDir, platform, tmpDir, userName } from "./paths.ts";
+export {
+  appDirs,
+  homeDir,
+  hostName,
+  piAgentDir,
+  piSessionsDir,
+  platform,
+  tmpDir,
+  userName,
+} from "./paths.ts";
 export type { ServiceDefinition, ServiceManager, ServiceState, ServiceStatus } from "./service/index.ts";
 export { serviceManager } from "./service/index.ts";
 export type { Launcher, ShellChoice, SpawnArgvOptions } from "./spawn.ts";

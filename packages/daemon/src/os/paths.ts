@@ -87,3 +87,11 @@ export function userName(): string {
     return "user";
   }
 }
+
+export function hostName(): string {
+  try {
+    return os.hostname();
+  } catch {
+    return "localhost";
+  }
+}
