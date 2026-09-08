@@ -1,0 +1,19 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.6.0.schema.json
+PackageIdentifier: CoresoftHQ.PiDaemon
+PackageVersion: 1.0.0
+PackageLocale: en-US
+Publisher: Coresoft
+PublisherUrl: https://github.com/CoresoftHQ
+PackageName: pi-daemon
+PackageUrl: https://github.com/CoresoftHQ/pi-daemon
+License: MIT
+LicenseUrl: https://github.com/CoresoftHQ/pi-daemon/blob/main/LICENSE
+ShortDescription: Runs Pi Coding Agent sessions, workspaces, and terminals for remote clients
+Description: A daemon that runs Pi Coding Agent sessions as supervised subprocesses and serves them, with workspaces, a file API, and terminals, to any client over pi's remote-session protocol and a JSON API. After installing, run `pi-daemon setup` to register it as a logon task.
+Tags:
+  - pi
+  - coding-agent
+  - daemon
+ReleaseNotesUrl: https://github.com/CoresoftHQ/pi-daemon/blob/main/CHANGELOG.md
+ManifestType: defaultLocale
+ManifestVersion: 1.6.0

@@ -72,7 +72,19 @@ event replay ring, 8 MiB frames.
   multi-byte characters, `U+2028`/`U+2029`, garbage lines) — no crash, no phantom record, and a
   good client is served after every round.
 
+### Installing
+
+One line per platform installs the CLI; `pi-daemon setup` then registers the service (`install`
+remains as an alias). The release workflow builds a self-contained npm tarball (the contract
+package and `typebox` bundled, so `npm i -g pi-daemon-<v>.tgz` works without the registry
+scope), a Windows portable zip with its own `node.exe` for winget, checksums, and a GitHub
+Release; `install.sh` and `install.ps1` install from those, downloading Node on Linux when the
+machine has none. The Homebrew formula and winget manifests live under `packaging/`.
+
 ### Fixed during hardening
+
+- The daemon imported `typebox/value` without declaring `typebox` as a dependency; the
+  monorepo hid it. Found by installing the tarball into a fresh prefix, which CI now does.
 
 - node-pty left one pipe handle open per closed terminal on Windows, and a terminal whose shell
   exited on its own kept its ConPTY alive until the record was deleted. Both released now.

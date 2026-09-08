@@ -496,7 +496,18 @@ owner device, limits, upgrading. **Release**: both packages at `1.0.0`, [`CHANGE
 with the platform and capability matrices, the supported pi range, and the measurements. Not
 done by me: the 24-hour soak (the script is there; `--minutes 1440`), the human security
 review, and documentation review by someone who did not write it — the three acceptance items
-that need a person. Not tagged or published: that is a `main` decision.
+that need a person. Not tagged or published: that is a `main` decision. **Installation (2026-09-08)**: one-line
+installs per platform, with service registration as the separate `pi-daemon setup` step
+(`install` kept as an alias). `scripts/release/build.mjs` produces a self-contained npm
+tarball (the contract package and `typebox` bundled, after `npm pack` under workspaces turned
+out to bundle nothing on its own and npm's dedupe then left an empty `typebox`), the Windows
+portable zip with its own `node.exe`, and checksums; `install.sh` (verified in Docker with and
+without Node present) and `install.ps1` (verified against the built zip) install from a GitHub
+Release; `packaging/` holds the Homebrew formula and the winget manifests; `release.yml`
+builds and smoke-tests everything on a tag and publishes to npm when `NPM_PUBLISH` is set;
+CI gained a `package` job that installs the tarball into a fresh prefix, which is how the
+undeclared `typebox` dependency was caught. Publishing needs the npm org, the tap repository,
+and the first winget submission, all of which are the operator's.
 
 - Full CI matrix: three platforms, two Node minors, and the **oldest and newest supported `pi`**
   — the version range in `capabilities` is a promise and needs testing at both ends.

@@ -1,0 +1,17 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.6.0.schema.json
+PackageIdentifier: CoresoftHQ.PiDaemon
+PackageVersion: 1.0.0
+InstallerType: zip
+NestedInstallerType: portable
+NestedInstallerFiles:
+  - RelativeFilePath: pi-daemon.cmd
+    PortableCommandAlias: pi-daemon
+Commands:
+  - pi-daemon
+MinimumOSVersion: 10.0.17763.0
+Installers:
+  - Architecture: x64
+    InstallerUrl: https://github.com/CoresoftHQ/pi-daemon/releases/download/v1.0.0/pi-daemon-1.0.0-win-x64.zip
+    InstallerSha256: REPLACE_WITH_SHA256_FROM_RELEASE
+ManifestType: installer
+ManifestVersion: 1.6.0

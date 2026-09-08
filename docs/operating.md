@@ -35,21 +35,25 @@ the workspace root, resolved through `realpath`, and refused if it lands outside
 absolute, drive-relative, UNC, control characters, and out-pointing symlinks all failing the
 same way. Everything else is pi's.
 
-## 3. Install
+## 3. Install, then set up
+
+Installing the CLI is one line per platform (`brew install coresofthq/tap/pi-daemon`,
+`winget install CoresoftHQ.PiDaemon`, or the `install.sh` script on Linux; the README has all
+of them and what each needs). Registering the daemon as a service is a second step, the same on
+every platform:
 
 ```sh
-npm install -g pi-daemon        # Node 22.19 or newer; no compiler needed
 pi-daemon doctor                # pi on PATH? signed in? port free? service? clock?
-pi-daemon install               # systemd user unit / LaunchAgent / logon task, then start
+pi-daemon setup                 # systemd user unit / LaunchAgent / logon task, then start
 pi-daemon status
 ```
 
 `doctor` is the place to start when anything is off. It names the problem and the fix.
 
-On Linux, `install` also runs `loginctl enable-linger` so the daemon survives your logout on a
+On Linux, `setup` also runs `loginctl enable-linger` so the daemon survives your logout on a
 headless box. On Windows it is a logon task needing no admin; a boot-time Windows Service is not
 provided in 1.0. Logs rotate under the platform's log directory; `pi-daemon logs -f` follows them.
-The README has the per-platform prerequisites.
+`pi-daemon uninstall` removes the registration and nothing else.
 
 ## 4. Reaching it: tailnet and TLS
 

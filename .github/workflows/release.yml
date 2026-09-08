@@ -1,0 +1,83 @@
+name: release
+
+# Tag `vX.Y.Z` (matching packages/*/package.json) to build the artifacts the one-line installs
+# consume: the self-contained npm tarball, the Windows portable zip, checksums, a GitHub Release,
+# and (when NPM_TOKEN is set) the two npm packages with provenance.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  artifacts:
+    runs-on: windows-latest # the portable zip installs the win32 PTY prebuild; simplest to do it here
+    timeout-minutes: 30
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
+      - id: meta
+        shell: bash
+        run: |
+          v=$(node -p "require('./packages/daemon/package.json').version")
+          [ "v$v" = "${GITHUB_REF_NAME}" ] || { echo "tag ${GITHUB_REF_NAME} does not match package version $v"; exit 1; }
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+      - run: node scripts/release/build.mjs all
+      - name: smoke-test the tarball from a fresh prefix
+        shell: bash
+        run: |
+          npm i -g --prefix ./smoke ./release/pi-daemon-${{ steps.meta.outputs.version }}.tgz --no-audit --no-fund
+          ./smoke/pi-daemon.cmd --version
+          ./smoke/pi-daemon.cmd config path
+      - name: smoke-test the portable zip
+        shell: pwsh
+        run: |
+          Expand-Archive release/pi-daemon-${{ steps.meta.outputs.version }}-win-x64.zip -DestinationPath smoke-zip
+          & .\smoke-zip\pi-daemon.cmd --version
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release
+          path: |
+            release/*.tgz
+            release/*-win-x64.zip
+            release/SHA256SUMS
+      - name: GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/*.tgz
+            release/*-win-x64.zip
+            release/SHA256SUMS
+          body_path: CHANGELOG.md
+      - name: Print the hashes the Homebrew formula and winget manifest need
+        shell: bash
+        run: cat release/SHA256SUMS >> "$GITHUB_STEP_SUMMARY"
+
+  npm:
+    needs: artifacts
+    runs-on: ubuntu-latest
+    if: ${{ vars.NPM_PUBLISH == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      - run: npm ci
+      - run: npm run build
+      - run: npm publish -w packages/contract --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - run: npm publish -w packages/daemon --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

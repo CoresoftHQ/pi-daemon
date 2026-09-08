@@ -33,6 +33,27 @@ jobs:
           # Service-manager round-trips register a real user service on the runner. Opt in.
           PI_DAEMON_SERVICE_TESTS: "1"
 
+  # The self-contained tarball the one-line installs consume: build it and install it into a
+  # fresh prefix, which is what catches an undeclared dependency the monorepo would hide.
+  package:
+    name: package (tarball smoke test)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: node scripts/release/build.mjs tgz
+      - run: |
+          npm i -g --prefix ./smoke ./release/pi-daemon-*.tgz --no-audit --no-fund
+          ./smoke/bin/pi-daemon --version
+          ./smoke/bin/pi-daemon doctor --json | head -c 400; echo
+      - run: sh -n install.sh
+
   # The supported pi range (capabilities.pi.supported) is a promise: test both ends with the
   # real pi, no provider needed (RPC mode answers get_state and lists models without one).
   pi-compat:

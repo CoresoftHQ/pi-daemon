@@ -65,8 +65,9 @@ Usage: pi-daemon <command> [options]
 
   serve        Run the daemon in this process (--foreground logs to stderr too;
                --bind, --port, --tls override the config for this run)
-  install      Register the daemon with the OS so it starts at logon, and start it
-               (--dry-run prints the unit/plist/task; --linger on Linux is the default)
+  setup        Register the daemon with the OS so it starts at logon, and start it
+               (systemd user unit, LaunchAgent, or Windows logon task; --dry-run prints
+               the definition; --linger on Linux is the default). "install" is an alias
   uninstall    Stop and unregister it
   start        Start the installed service
   stop         Stop the running daemon (drains, then exits)
@@ -106,6 +107,7 @@ export async function runCli(argv: string[], io: CliIo): Promise<number> {
       case "serve":
         return await serve(dirs, io, values);
       case "install":
+      case "setup":
         return await install(dirs, io, values);
       case "uninstall":
         return await uninstall(dirs, io);
