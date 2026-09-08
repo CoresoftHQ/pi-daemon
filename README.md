@@ -80,9 +80,8 @@ can leave and come back.
 process the daemon starts, watches, and can kill. One wedged session degrades one session instead
 of taking down every session on the machine, eviction reclaims memory with certainty, and the
 daemon imports no pi SDK at all: it needs the `pi` binary, plus one prebuilt native addon for
-terminals. The session's JSONL
-file stays the source of truth, so a session started from a phone resumes with `pi --session <id>`
-in a terminal, and vice versa.
+terminals. The session's JSONL file stays the source of truth, so a session started from a phone
+resumes with `pi --session <id>` in a terminal, and vice versa.
 
 **Client neutral by construction.** The session surface is
 [`@earendil-works/pi-protocol`](https://pi.dev) — pi's own remote-session protocol, for which pi
@@ -102,20 +101,106 @@ once by scanning a QR code carrying a short-lived single-use code and the daemon
 fingerprint, then exchanges it for its own revocable device token. A tailnet is the expected way
 in, but it is defence in depth — never a substitute for the token.
 
-## Running it
+## Installation
+
+The daemon is one Node program with one prebuilt native addon (the PTY for terminals). No
+compiler is needed on any of the three platforms.
+
+### Prerequisites, everywhere
+
+| What | Why | How |
+| --- | --- | --- |
+| Node.js 22.19 or newer (24 works) | runs the daemon | see the platform sections below |
+| `pi` on `PATH`, signed in to a provider | every session is a `pi --mode rpc` child | `npm i -g @earendil-works/pi-coding-agent`, then run `pi` once and sign in |
+| `git` | worktrees, status, diffs (optional: without it, `worktrees` is absent from capabilities) | platform package manager |
+| Tailscale (optional) | the intended way in from other devices, and a publicly trusted certificate | [tailscale.com/download](https://tailscale.com/download), with MagicDNS and HTTPS certificates enabled for your tailnet |
+
+Supported pi versions are `>=0.84.0 <0.86.0`; `pi-daemon doctor` checks the installed one.
+
+### Get pi-daemon
+
+Until the package is on npm, install from a clone:
 
 ```sh
-npm install && npm run build          # Node >= 22.19; no compiler needed on Linux, macOS, Windows
-node packages/daemon/dist/cli/main.js doctor     # pi on PATH? provider signed in? port free?
-node packages/daemon/dist/cli/main.js serve --foreground
+git clone https://github.com/CoresoftHQ/pi-daemon.git
+cd pi-daemon
+npm install
+npm run build
+npm link -w packages/daemon      # puts `pi-daemon` on your PATH, pointing at this clone
+pi-daemon doctor
 ```
 
-`pi-daemon install` registers it with the OS (systemd user unit, LaunchAgent, or a logon task)
-and starts it; `pi-daemon pair` prints the QR code a client scans; `pi-daemon status`, `logs -f`,
-`stop`, `config set bind tailscale`, and `devices create --name n8n` do what they say. The daemon
-listens on loopback with no TLS until you set `bind` to `tailscale` (a publicly trusted
+Once published, this becomes `npm i -g pi-daemon`. Either way, `pi-daemon doctor` is the first
+thing to run: it names anything missing and how to fix it.
+
+### Linux
+
+```sh
+# Node: any of these
+sudo apt install nodejs npm            # Debian/Ubuntu 24.04+ ship Node 22 or newer; check `node --version`
+# or: curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash - && sudo apt install nodejs
+# or: nvm install 22
+
+sudo apt install git                   # or your distribution's equivalent
+pi-daemon install                      # systemd user unit, started now and at every login
+```
+
+`install` also runs `loginctl enable-linger` so the daemon keeps running after you log out of a
+headless box; some distributions ask for authentication at that step, and if it is refused the
+unit still starts at every login. The PTY addon has prebuilds for x64 and arm64, glibc and musl,
+so Alpine works too. Files live under `~/.local/share/pi-daemon`, `~/.config/pi-daemon`, and
+`~/.local/state/pi-daemon`.
+
+### macOS
+
+```sh
+brew install node git                  # Node 24 from Homebrew is fine
+pi-daemon install                      # a LaunchAgent with RunAtLoad and KeepAlive
+```
+
+For `bind: tailscale` the daemon runs the `tailscale` command. The Mac App Store build keeps it
+inside the app bundle, so put it on your `PATH` once:
+
+```sh
+sudo ln -s /Applications/Tailscale.app/Contents/MacOS/Tailscale /usr/local/bin/tailscale
+```
+
+Files live under `~/Library/Application Support/pi-daemon`, logs under
+`~/Library/Logs/pi-daemon`.
+
+### Windows
+
+```powershell
+winget install OpenJS.NodeJS.LTS       # Node 22 LTS; or the installer from nodejs.org
+winget install Git.Git
+winget install Microsoft.PowerShell    # optional: terminals use pwsh when present, Windows PowerShell otherwise
+pi-daemon install                      # a scheduled task at your logon; no admin needed
+```
+
+Windows 10 1809 or newer is needed for ConPTY, which terminals use. The first time the daemon
+binds a non-loopback address Windows shows a firewall prompt; allow it for private networks. A
+boot-time Windows Service (running before anyone logs on) is not provided in 1.0; the logon task
+is the supported form. Files live under `%LOCALAPPDATA%\pi-daemon`.
+
+### First run, on any of them
+
+```sh
+pi-daemon status                       # running? where? which pi?
+pi-daemon pair                         # QR code and text for the first device; it becomes the owner
+pi-daemon config set bind tailscale    # reachable from your other devices, with a real certificate
+pi-daemon stop && pi-daemon start
+pi-daemon logs -f
+```
+
+`pi-daemon serve --foreground` runs it in the current terminal instead of as a service, which is
+the right way to try it out. `pi-daemon uninstall` removes the service and nothing else; the
+data directory stays until you delete it. `PI_DAEMON_HOME=<dir>` moves everything under one
+directory, for a second daemon or a throwaway.
+
+The daemon listens on loopback with no TLS until `bind` is `tailscale` (a publicly trusted
 certificate for the MagicDNS name) or an explicit address (self-signed, fingerprint in the QR).
-Everything it keeps lives under one directory per platform, or under `PI_DAEMON_HOME`.
+Read [docs/operating.md](docs/operating.md) before doing either: a device token is shell access as
+the user the daemon runs as.
 
 ## Status
 

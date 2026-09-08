@@ -47,8 +47,9 @@ pi-daemon status
 `doctor` is the place to start when anything is off. It names the problem and the fix.
 
 On Linux, `install` also runs `loginctl enable-linger` so the daemon survives your logout on a
-headless box. On Windows the default is a logon task needing no admin; `--boot-time` registers a
-Service instead. Logs rotate under the platform's log directory; `pi-daemon logs -f` follows them.
+headless box. On Windows it is a logon task needing no admin; a boot-time Windows Service is not
+provided in 1.0. Logs rotate under the platform's log directory; `pi-daemon logs -f` follows them.
+The README has the per-platform prerequisites.
 
 ## 4. Reaching it: tailnet and TLS
 

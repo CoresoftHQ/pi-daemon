@@ -20,7 +20,7 @@ it makes `pi-daemon doctor` warn and the daemon still try.
 | | Linux | macOS | Windows |
 | --- | --- | --- | --- |
 | Node | 22.19+, 24 | 22.19+, 24 | 22.19+, 24 |
-| Service | systemd user unit, `enable-linger` | LaunchAgent | logon scheduled task (no admin); `--boot-time` Service |
+| Service | systemd user unit, `enable-linger` | LaunchAgent | logon scheduled task (no admin); no boot-time Service in 1.0 |
 | PTY | forkpty, prebuilt (glibc and musl, x64 and arm64) | forkpty, prebuilt | ConPTY, prebuilt |
 | Local endpoint | Unix socket, 0600 | Unix socket, 0600 | named pipe |
 | Install | no compiler on any of them | | |

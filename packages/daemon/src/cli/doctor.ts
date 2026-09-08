@@ -2,7 +2,7 @@
 // with an injectable implementation so the verdicts are testable without the conditions.
 
 import { X509Certificate } from "node:crypto";
-import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import net from "node:net";
 import path from "node:path";
 import type { TailnetStatus } from "../access/tailscale.ts";
@@ -59,8 +59,11 @@ export function defaultProbes(
     nodeVersion: () => process.versions.node,
     piLauncher: () => resolvePiLauncher(piEnv),
     piVersion: (launcher) => probePiVersion({ launcher, env: piEnv, timeoutMs: 15_000 }),
-    piModels: async (launcher) =>
-      (await probeAvailableModels({ cwd: dirs.state, env: piEnv, launcher })).length,
+    piModels: async (launcher) => {
+      // the daemon creates its directories on start; before that, probe from somewhere that exists
+      mkdirSync(dirs.state, { recursive: true });
+      return (await probeAvailableModels({ cwd: dirs.state, env: piEnv, launcher })).length;
+    },
     daemonRunning: () =>
       controlRequest(dirs.state, "ping", {}, { timeoutMs: 1500 }).then(
         (r) => r as { pid: number; port: number },
@@ -75,6 +78,7 @@ export function defaultProbes(
     writable: (dir) => {
       const probe = path.join(dir, `.doctor-${process.pid}`);
       try {
+        mkdirSync(dir, { recursive: true, mode: 0o700 });
         writeFileSync(probe, "ok");
         rmSync(probe);
         return true;

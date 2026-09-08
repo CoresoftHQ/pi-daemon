@@ -9,6 +9,7 @@ import {
   openSync,
   readFileSync,
   readSync,
+  realpathSync,
   statSync,
   unwatchFile,
   watchFile,
@@ -64,8 +65,8 @@ Usage: pi-daemon <command> [options]
 
   serve        Run the daemon in this process (--foreground logs to stderr too;
                --bind, --port, --tls override the config for this run)
-  install      Register the daemon with the OS so it starts at logon (--dry-run,
-               --boot-time on Windows, --linger on Linux) and start it
+  install      Register the daemon with the OS so it starts at logon, and start it
+               (--dry-run prints the unit/plist/task; --linger on Linux is the default)
   uninstall    Stop and unregister it
   start        Start the installed service
   stop         Stop the running daemon (drains, then exits)
@@ -534,11 +535,17 @@ function config(dirs: AppDirs, io: CliIo, args: string[]): number {
 
 // ---- entry
 
+/**
+ * Run only when this file is the entry. Node resolves the entry through symlinks (`npm link`,
+ * a global install's bin shim), so compare real paths, not the URL argv named.
+ */
 function isMain(): boolean {
   const arg = process.argv[1];
   if (!arg) return false;
   try {
-    return import.meta.url === pathToFileURL(arg).href;
+    const entry = realpathSync(arg);
+    const self = realpathSync(fileURLToPath(import.meta.url));
+    return entry === self || pathToFileURL(entry).href === import.meta.url;
   } catch {
     return false;
   }
