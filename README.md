@@ -91,15 +91,36 @@ plain JSON `/v1` API carrying the same state, so a client written in Swift, Kotl
 `curl` needs neither CBOR nor a pi dependency. Our own clients live in separate repositories and
 get no back door.
 
-**The daemon decides less than you might expect.** Approvals and project trust belong to pi and
-the operator's own pi configuration; the daemon relays the question to a client and the answer
-back, and keeps no policy of its own. It also never touches a provider credential — the runner
-uses the pi authentication already on the machine.
-
 **Access.** Every request is authenticated; network position alone grants nothing. A client pairs
 once by scanning a QR code carrying a short-lived single-use code and the daemon's certificate
 fingerprint, then exchanges it for its own revocable device token. A tailnet is the expected way
 in, but it is defence in depth — never a substitute for the token.
+
+## Client versus daemon
+
+The daemon owns everything that must be true no matter which client is looking, or whether any
+client is looking at all. A client owns everything a person sees and touches. The line between
+them is the wire contract: pi-protocol for sessions, `/v1` and its event stream for the rest,
+and `GET /v1/capabilities` for what this particular daemon can do.
+
+| Concern | The daemon implements | A client implements |
+| --- | --- | --- |
+| Sessions | Spawning, supervising, evicting, and killing one `pi --mode rpc` process per session; the authoritative transcript state with a `revision`; a `runId` for every turn | The transcript view: markdown, tool calls, diffs, streaming text; which session to open; when to re-prompt after an `interrupted` turn |
+| Events | One global event log with a monotonic `seq`, a replay ring, scope filtering, and `snapshot.required` when a client is too far behind | Resuming from its last `seq` on reconnect, and re-reading state when told the ring has moved on |
+| Dialogs | Relaying pi's `extension_ui_request` to every attached client verbatim, returning the first answer, telling the others who answered | The UI for a question, a choice, an input, or an editor; showing that someone else already answered |
+| Approvals and trust | Nothing. Approvals are pi's own gates in the operator's pi configuration; the daemon carries the question and the answer and keeps no policy | Presenting the question well. Not deciding it either |
+| Workspaces | The registry of projects, worktrees, and groups; `git worktree add` with names validated for every OS; status and diffs; the watcher and `files_changed` | Navigation, grouping views, the "start a task in a clean tree" flow, and choosing which daemon a workspace lives on |
+| Files | Serving bytes only inside a registered workspace, `ETag`s, atomic writes with `If-Match`, the boundary checks | The editor, and what to do on `412`: the agent changed the file since you read it |
+| Terminals | The PTY, the shell, the screen model, the snapshot on attach, fan-out to many clients, cutting a client that cannot keep up | The terminal emulator (`xterm.js`, `ghostty-web`, SwiftTerm, libghostty), keyboard handling, resize |
+| Access | Pairing codes and the QR payload, device tokens and their hashes, revocation, roles, TLS, tailnet identity | Scanning the QR, pinning the certificate fingerprint, storing its token as carefully as an SSH key, re-pairing when revoked |
+| Capabilities | Saying exactly what it has and lacks: `features`, `absent`, `limits`, the detected `pi` version | Degrading against that document instead of against failed calls |
+| Lifecycle | Idle eviction, the runner cap, graceful shutdown, single instance, surviving every client leaving | Retrying a `prompt` with the same `Idempotency-Key`; reconnecting without assuming the daemon noticed it was gone |
+| Scheduling and orchestration | Nothing in v1. Runs start when asked | Schedules, queues, workflows (n8n or its own), using `runId` to know which turn finished |
+| Notifications | Emitting the events a push relay would consume | Everything else, until a relay exists |
+| Credentials | Never handling a provider key; the runner uses pi's own sign-in on the machine | Never asking for one |
+
+The test of the split is a client written in `curl`: if something can only be done with a
+particular client, it is in the wrong place.
 
 ## Installation
 
