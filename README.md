@@ -8,18 +8,73 @@ stream what they do as events, and turn the moments where the agent blocks on a 
 messages any client can answer. A phone on the couch, a laptop across the house, and a browser
 tab can all be attached to the same session at once.
 
+```mermaid
+flowchart LR
+    subgraph clients ["Clients"]
+        phone["Phone / tablet"]
+        web["Browser"]
+        laptop["Laptop / curl / n8n"]
+    end
+
+    subgraph daemon ["pi-daemon"]
+        direction LR
+        access["access<br/>pairing QR · device tokens · TLS · tailnet identity"]
+
+        subgraph serve ["serve"]
+            proto["pi-protocol<br/>CBOR over WebSocket<br/>and the local endpoint"]
+            v1["/v1 JSON<br/>sessions · workspaces · files · terminals"]
+            events["event stream<br/>WebSocket or SSE, global seq, resume"]
+            tstream["terminal stream<br/>binary frames · VT snapshot on attach"]
+        end
+
+        subgraph sessions ["sessions"]
+            state["transcript state · leases · dialog relay"]
+            runners["runners<br/>one supervised child per session"]
+        end
+
+        subgraph workspaces ["workspaces"]
+            registry["projects · worktrees · groups"]
+            files["file API with realpath boundary"]
+            watcher["git status + watcher"]
+        end
+
+        subgraph terminals ["terminals"]
+            pty["PTY: the user's shell"]
+            screen["headless screen model<br/>bounded scrollback"]
+        end
+
+        control["control endpoint<br/>stop · status · pair · devices"]
+    end
+
+    pi["pi --mode rpc × N<br/>(JSONL over stdio)"]
+    jsonl[("~/.pi/agent/sessions/*.jsonl<br/>the source of truth")]
+    repo[("workspace directory<br/>git worktrees")]
+    cli["pi-daemon CLI<br/>serve · install · pair · doctor"]
+
+    phone & web & laptop -->|"bearer token"| access
+    access --> proto & v1 & events & tstream
+    proto --> state
+    v1 --> state
+    v1 --> registry & files
+    v1 --> pty
+    state --> runners -->|"spawn, watch, kill"| pi
+    pi --> jsonl
+    runners -.->|"events"| state
+    state -.->|"session.* · dialog.*"| events
+    registry -.->|"workspace.* · files_changed"| events
+    watcher --> repo
+    files --> repo
+    pty --> screen
+    screen -.->|"snapshot, then live bytes"| tstream
+    pty -.->|"terminal.*"| events
+    events -.-> phone & web & laptop
+    cli --> control
 ```
-                       ┌──────────────── pi-daemon ────────────────┐
-   phone   ─┐          │                                           │
-   tablet   ├─ CBOR ──▶│  access ─▶ serve ─▶ sessions ─▶ runners   │
-   browser  │          │                 │                 │       │
-   laptop   ├─ JSON ──▶│           workspaces              │ spawn │
-   curl    ─┘          │                                   ▼       │
-                       │                          pi --mode rpc × N│
-                       └───────────────────────────────┬───────────┘
-                                                       ▼
-                                        ~/.pi/agent/sessions/*.jsonl
-```
+
+Solid arrows are requests; dotted arrows are what flows back. Sessions and terminals are separate
+paths: a session is a `pi --mode rpc` process whose structured events become a transcript, a
+terminal is a plain shell in a PTY whose bytes the daemon keeps on a screen model so a client
+can leave and come back.
 
 **Each session is a supervised `pi` process.** Not an SDK object inside the daemon — a child
 process the daemon starts, watches, and can kill. One wedged session degrades one session instead
