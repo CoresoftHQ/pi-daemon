@@ -31,6 +31,7 @@ import type { Launcher } from "../os/spawn.ts";
 import { resolvePiLauncher } from "../os/spawn.ts";
 import type { PiInstall } from "../runners/version.ts";
 import { inSupportedRange, probePiVersion } from "../runners/version.ts";
+import { applyCors } from "../serve/cors.ts";
 import { PiProtocolServer } from "../serve/pi-protocol/server.ts";
 import { attachWebSocketListener, listenLocalEndpoint, PI_PROTOCOL_PATH } from "../serve/pi-protocol/ws.ts";
 import { buildCapabilities, SUPPORTED_PI_RANGE } from "../serve/v1/capabilities.ts";
@@ -296,6 +297,7 @@ export async function startDaemon(options: StartOptions): Promise<RunningDaemon>
   const handler = (req: http.IncomingMessage, res: http.ServerResponse) => {
     void (async () => {
       try {
+        if (applyCors(req, res, config.cors.origins)) return;
         if (await accessRoutes(req, res)) return;
         if (await v1.handle(req, res)) return;
         res

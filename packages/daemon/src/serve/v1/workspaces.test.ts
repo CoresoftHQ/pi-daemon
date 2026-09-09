@@ -488,3 +488,13 @@ test("a standalone directory: no project, no git, empty status, tree still works
   assert.equal((await call("DELETE", `/v1/workspaces/${id}`, { token: owner })).status, 200);
   assert.ok(existsSync(path.join(dir, "note.txt")), "deregistration deletes nothing");
 });
+
+test("creating a session without a workspaceId uses the first registered workspace", {
+  skip: !haveGit,
+}, async () => {
+  const r = await call("POST", "/v1/sessions", { json: {} });
+  assert.equal(r.status, 201, JSON.stringify(r.body));
+  const session = r.body.session as { id: string; workspaceId: string };
+  assert.equal(session.workspaceId, mainId);
+  await host.evict(session.id, "test");
+});

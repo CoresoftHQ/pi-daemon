@@ -121,7 +121,15 @@ A snapshot's `transcript` is an array of discriminated items: `user`, `assistant
 (`streaming` / `complete` / `error` / `aborted`), and `tool` (`running` / `complete` / `error`).
 `phase` is `idle`, `turn`, `compaction`, `branch_summary`, or `retry`. `interrupted`, when
 present, says a turn died with the daemon or a runner crash and carries its `runId`; the client
-decides whether to re-prompt.
+decides whether to re-prompt. `workspaceId` may be omitted on create; the daemon's default is
+the first registered workspace.
+
+**Two legitimate ways to follow a transcript over JSON.** The lazy way: subscribe to
+`session:<id>` and re-`GET /v1/sessions/:id` whenever `session.changed` arrives with a higher
+`revision`. It is one request per settled change, always correct, and enough for most clients.
+The streaming way: apply `transcript.item_started`, `item_updated`, `assistant_delta`, and
+`item_finished` as they arrive to show text as it streams, and still treat the next snapshot as
+authoritative. Both carry the same `revision`, so you can start lazy and add streaming later.
 
 ## 6. Sessions over pi-protocol
 
@@ -220,7 +228,19 @@ When pi blocks on a human (a permission gate, an extension's `confirm`, `select`
 ```
 
 Render it from `request.method` and pi's fields; there is no daemon-side classification of
-"approval" versus "question", because pi does not make one. Answer with one of:
+"approval" versus "question", because pi does not make one. The four blocking methods and the
+fields pi sends with them (`title` and `message` are the human text; everything else is
+optional, and unknown extra fields must be tolerated):
+
+| `method` | Fields | Answer with |
+| --- | --- | --- |
+| `confirm` | `title`, `message` | `{ "confirmed": true \| false }` |
+| `select` | `title`, `message`, `options: string[]` | `{ "value": "<one of options>" }` |
+| `input` | `title`, `message`, `placeholder?` | `{ "value": "<typed text>" }` |
+| `editor` | `title`, `message` (initial text) | `{ "value": "<edited text>" }` |
+
+`{ "cancelled": true }` is valid for all four. A `timeout` in milliseconds, when present, is how
+long pi will wait before giving up on its own. Answer with one of:
 
 ```http
 POST /v1/dialogs/:dialogId/respond
@@ -321,6 +341,9 @@ event payloads are keyed by type in `EventPayloads`; the terminal control frames
 ```sh
 node -e "import('@coresoft-hq/pi-daemon-contract').then(m => console.log(JSON.stringify(m.openApiDocument({ version: '1.0.0' }), null, 2)))" > pi-daemon.openapi.json
 ```
+
+Every GitHub Release also carries `pi-daemon.openapi.json`, the same document, so nothing needs
+Node to generate a client.
 
 `CONTRACT_VERSION` is `1`. `/v1` is additive within the version: new routes, new optional fields,
 new event types, new capability strings. Anything breaking is `/v2`, and `capabilities.api.version`

@@ -77,6 +77,11 @@ fingerprint travels in the pairing QR, so native clients pin it. Browsers cannot
 mode has no clean web story. Windows will raise a firewall prompt on the first non-loopback
 bind.
 
+A web client served from somewhere other than the daemon itself needs the browser's permission
+to call it: `config set cors.origins '["https://ade.example.com"]'` lists the origins allowed
+(`"*"` allows any). It is off by default. Tokens are still required from every origin; CORS only
+lets the browser make the request.
+
 `config set tailnet.allowedUsers '["you@example.com"]'` limits *who on the tailnet* may present a
 token. It is defence in depth on top of the token, never a substitute: if Tailscale is down the
 daemon keeps working and keeps requiring tokens.

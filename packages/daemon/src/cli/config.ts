@@ -44,6 +44,8 @@ export interface DaemonConfig {
   };
   files: { write: boolean };
   terminals: { enabled: boolean };
+  /** Browser clients from other origins; empty means none. "*" allows any. Tokens are still required. */
+  cors: { origins: string[] };
   tailnet: {
     /** Login names allowed from the tailnet; empty means no restriction. Tokens are still required. */
     allowedUsers: string[];
@@ -80,6 +82,7 @@ export const DEFAULT_CONFIG: DaemonConfig = {
   },
   files: { write: true },
   terminals: { enabled: true },
+  cors: { origins: [] },
   tailnet: { allowedUsers: [] },
   log: { level: "info", maxBytes: 10 * 1024 * 1024, maxFiles: 5 },
   drainMs: 10_000,
@@ -170,6 +173,9 @@ export function validateConfig(c: DaemonConfig): string[] {
   int(c.limits.maxBufferedBytes, "limits.maxBufferedBytes", 64 * 1024, 256 * 1024 * 1024);
   bool(c.files.write, "files.write");
   bool(c.terminals.enabled, "terminals.enabled");
+  strings(c.cors.origins, "cors.origins");
+  if (Array.isArray(c.cors.origins) && c.cors.origins.some((o) => o !== "*" && !/^https?:\/\/[^/]+$/.test(o)))
+    p.push('cors.origins: each entry is "*" or an origin like https://app.example.com (no path)');
   strings(c.tailnet.allowedUsers, "tailnet.allowedUsers");
   if (!["debug", "info", "warn", "error"].includes(c.log.level))
     p.push('log.level: expected "debug", "info", "warn", or "error"');

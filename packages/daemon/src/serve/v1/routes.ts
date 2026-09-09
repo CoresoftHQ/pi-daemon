@@ -73,6 +73,10 @@ export function createV1Router(options: V1RoutesOptions): Router {
     }
   };
   const snapshot = (s: Session) => ({ session: toJsonSnapshot(s.state) });
+  const defaultWorkspace = () => {
+    const r = options.workspaces.resolveCwd();
+    return r.ok ? { workspaceId: r.workspaceId, cwd: r.cwd } : undefined;
+  };
 
   router.add("GET", "/v1/health", { auth: "none" }, async ({ res }) =>
     sendJson(res, 200, { ok: true, version: options.version }),
@@ -96,8 +100,13 @@ export function createV1Router(options: V1RoutesOptions): Router {
 
   router.add("POST", "/v1/sessions", { auth: "member" }, async ({ req, res }) => {
     const b = await body(req, CreateSessionRequest);
-    const ws = options.workspaces.workspaceById(b.workspaceId);
-    if (!ws) throw new HttpError(404, "unknown_workspace", `no workspace ${b.workspaceId}`);
+    const ws = b.workspaceId ? options.workspaces.workspaceById(b.workspaceId) : defaultWorkspace();
+    if (!ws)
+      throw new HttpError(
+        404,
+        "unknown_workspace",
+        b.workspaceId ? `no workspace ${b.workspaceId}` : "no workspace is registered; register one first",
+      );
     try {
       const s = await host.create({
         workspaceId: ws.workspaceId,

@@ -81,6 +81,14 @@ scope), a Windows portable zip with its own `node.exe` for winget, checksums, an
 Release; `install.sh` and `install.ps1` install from those, downloading Node on Linux when the
 machine has none. The Homebrew formula and winget manifests live under `packaging/`.
 
+### For client developers
+
+- `docs/clients.md` is the call-by-call guide; `pi-daemon.openapi.json` ships with every release.
+- `cors.origins` lets a web client served from another origin call the daemon; off by default,
+  and tokens are still required.
+- `POST /v1/sessions` no longer needs a `workspaceId`; omitted means the first registered
+  workspace, as pi-protocol's `create` already did.
+
 ### Fixed during hardening
 
 - The daemon imported `typebox/value` without declaring `typebox` as a dependency; the

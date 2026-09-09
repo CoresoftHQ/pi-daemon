@@ -33,6 +33,9 @@ jobs:
           [ "v$v" = "${GITHUB_REF_NAME}" ] || { echo "tag ${GITHUB_REF_NAME} does not match package version $v"; exit 1; }
           echo "version=$v" >> "$GITHUB_OUTPUT"
       - run: node scripts/release/build.mjs all
+      - name: OpenAPI document, for clients in other languages
+        shell: bash
+        run: node -e "import('./packages/contract/dist/index.js').then(m => process.stdout.write(JSON.stringify(m.openApiDocument({ version: '${{ steps.meta.outputs.version }}' }), null, 2)))" > release/pi-daemon.openapi.json
       - name: smoke-test the tarball from a fresh prefix
         shell: bash
         run: |
@@ -50,6 +53,7 @@ jobs:
           path: |
             release/*.tgz
             release/*-win-x64.zip
+            release/pi-daemon.openapi.json
             release/SHA256SUMS
       - name: GitHub Release
         uses: softprops/action-gh-release@v2
@@ -57,6 +61,7 @@ jobs:
           files: |
             release/*.tgz
             release/*-win-x64.zip
+            release/pi-daemon.openapi.json
             release/SHA256SUMS
           body_path: CHANGELOG.md
       - name: Print the hashes the Homebrew formula and winget manifest need

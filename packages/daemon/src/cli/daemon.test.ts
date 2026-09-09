@@ -226,3 +226,35 @@ test("the CLI end to end: serve in-process, status, pair, config, stop", async (
   assert.equal(await serving, 0);
   assert.match(takeErr(), /stopped \(control\)/);
 });
+
+test("CORS: off by default; listed origins get headers and preflight answers without a token", async (t) => {
+  const { dirs } = home(t);
+  const port = await freePort();
+  const d = await start(t, dirs, { ...DEFAULT_CONFIG, port, cors: { origins: ["https://app.example"] } });
+  const base = `http://127.0.0.1:${port}`;
+  const preflight = await fetch(`${base}/v1/sessions`, {
+    method: "OPTIONS",
+    headers: {
+      origin: "https://app.example",
+      "access-control-request-method": "POST",
+      "access-control-request-headers": "authorization, content-type",
+    },
+  });
+  assert.equal(preflight.status, 204);
+  assert.equal(preflight.headers.get("access-control-allow-origin"), "https://app.example");
+  assert.match(preflight.headers.get("access-control-allow-headers") ?? "", /authorization/);
+  assert.equal(preflight.headers.get("vary"), "Origin");
+
+  const plain = await fetch(`${base}/v1/health`, { headers: { origin: "https://app.example" } });
+  assert.equal(plain.headers.get("access-control-allow-origin"), "https://app.example");
+  assert.match(plain.headers.get("access-control-expose-headers") ?? "", /ETag/);
+
+  const other = await fetch(`${base}/v1/health`, { headers: { origin: "https://evil.example" } });
+  assert.equal(other.headers.get("access-control-allow-origin"), null, "an unlisted origin gets nothing");
+  const otherPreflight = await fetch(`${base}/v1/sessions`, {
+    method: "OPTIONS",
+    headers: { origin: "https://evil.example", "access-control-request-method": "POST" },
+  });
+  assert.notEqual(otherPreflight.status, 204);
+  await d.stop("test");
+});

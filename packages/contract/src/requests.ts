@@ -86,7 +86,8 @@ export const SessionList = Type.Object({ sessions: Type.Array(SessionSummary) })
 export type SessionList = Static<typeof SessionList>;
 
 export const CreateSessionRequest = Type.Object({
-  workspaceId: Type.String(),
+  /** Omitted means the daemon's default workspace: the first one registered. */
+  workspaceId: Type.Optional(Type.String()),
   model: Type.Optional(ModelRef),
   thinkingLevel: Type.Optional(ThinkingLevel),
   name: Type.Optional(Type.String()),
