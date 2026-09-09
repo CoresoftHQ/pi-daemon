@@ -1,8 +1,5 @@
-// Import-boundary lint (spec §2.3). Three rules that rot silently if not enforced:
-//   1. nothing outside src/runners may know pi exists
-//   2. nothing outside src/os may branch on the operating system
-//   3. nothing outside src/terminals may import node-pty
-// Plus the layering: access → serve → sessions → runners, workspaces under sessions, os at the bottom.
+// Import-boundary lint (spec §2.3): who may know pi, the OS, and node-pty, plus the layering.
+// The rules and why they matter: docs/design.md, scripts/check-boundaries.
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";

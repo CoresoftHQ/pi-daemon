@@ -128,12 +128,12 @@ export async function buildWindowsPortable() {
   );
   writeFileSync(
     path.join(stage, "pi-daemon.cmd"),
-    [
+    `${[
       "@echo off",
       "setlocal",
       '"%~dp0node.exe" "%~dp0app\\node_modules\\pi-daemon\\dist\\cli\\main.js" %*',
       "exit /b %ERRORLEVEL%",
-    ].join("\r\n") + "\r\n",
+    ].join("\r\n")}\r\n`,
   );
   cpSync(path.join(root, "LICENSE"), path.join(stage, "LICENSE"), { force: true });
   cpSync(path.join(root, "README.md"), path.join(stage, "README.md"));

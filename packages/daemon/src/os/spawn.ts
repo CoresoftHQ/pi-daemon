@@ -64,10 +64,8 @@ export interface Launcher {
 }
 
 /**
- * Resolve how to start pi. The global `pi` on Windows is an npm `.cmd` shim, which Node refuses
- * to spawn without a shell (a deliberate security default), so the daemon locates the CLI entry
- * the shim points at and runs it under its own `node`. PI_DAEMON_PI=<path> overrides: a JS entry
- * runs under node, anything else runs directly.
+ * How to start pi: PI_DAEMON_PI, else PATH, resolving Windows' npm .cmd shim to the JS entry it
+ * points at so it runs under our own node (docs/design.md, os/spawn).
  */
 export function resolvePiLauncher(env: NodeJS.ProcessEnv = process.env): Launcher | null {
   const override = env.PI_DAEMON_PI;
@@ -119,11 +117,7 @@ export function userShell(env: NodeJS.ProcessEnv = process.env): ShellChoice {
   return { command: sh, argsFor: (c) => ["-lc", c], interactiveArgs: ["-l"] };
 }
 
-/**
- * Kill a process and everything under it. Genuinely different per platform: Windows has no
- * process groups, so `taskkill /T` walks the tree; POSIX signals the group the child was
- * spawned into (`ownGroup: true`), falling back to the pid alone.
- */
+/** Kill a process tree: `taskkill /T` on Windows, the process group elsewhere. */
 export function killTree(pid: number, signal: NodeJS.Signals = "SIGKILL"): void {
   if (!Number.isInteger(pid) || pid <= 0) return;
   if (platform === "win32") {

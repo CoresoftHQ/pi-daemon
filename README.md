@@ -216,3 +216,7 @@ a daemon to a network.
 - [Specification](docs/spec.md) — requirements, the runner architecture, both wire surfaces,
   the file API, terminals, access, safety, lifecycle, and the three operating systems.
 - [Implementation plan](docs/plan.md) — ten milestones, acceptance criteria, and risks.
+- [Design notes](docs/design.md) — per-module reasoning that is not in the spec: why each
+  piece is built the way it is.
+- [Operating](docs/operating.md) — what a device token means, threat model, tailnet and TLS,
+  recovery.

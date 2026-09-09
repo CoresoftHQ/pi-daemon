@@ -1,8 +1,5 @@
-// The loopback control endpoint (spec §8): how `pi-daemon stop|status|pair|devices` talk to a
-// running daemon without a signal, which Windows does not have. Newline-delimited JSON over
-// the local endpoint (Unix socket or named pipe), so filesystem permissions are the auth.
-// One request per line; the daemon may send `event` lines before the `reply` for commands that
-// wait on something (a pairing with --confirm).
+// The loopback control endpoint (spec §8): newline JSON over a local socket or pipe, with
+// `event`/`ask` lines before a `reply` for commands that wait (docs/design.md, cli/control).
 
 import type net from "node:net";
 import { createServer } from "node:net";

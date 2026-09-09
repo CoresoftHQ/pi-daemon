@@ -178,7 +178,7 @@ export class TerminalManager {
   /** Forget an exited terminal (its record stays until then so a client can read the exit). */
   remove(id: string): boolean {
     const t = this.#terminals.get(id);
-    if (!t || t.status !== "exited") return false;
+    if (t?.status !== "exited") return false;
     this.#forget(t);
     return true;
   }

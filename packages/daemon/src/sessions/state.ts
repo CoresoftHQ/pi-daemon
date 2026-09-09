@@ -1,10 +1,5 @@
-// Canonical session state (spec §5.3): one producer, two encoders. These shapes are ours and
-// deliberately a superset of pi-protocol's SessionSnapshot, which `serve` maps onto without
-// importing anything from pi here (boundary rule: only runners and serve know pi exists).
-//
-// Assistant and tool items are discriminated unions exactly as pi's schemas are — a streaming
-// assistant item has no stopReason, a running tool item has isError false — so that the
-// encoder's structural pin against pi's types is a real check rather than a cast.
+// Canonical session state (spec §5.3): one producer, two encoders. A superset of pi-protocol's
+// SessionSnapshot with the same discriminated unions; see docs/design.md, sessions/state.
 
 export type Phase = "idle" | "turn" | "compaction" | "branch_summary" | "retry";
 export type ThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";

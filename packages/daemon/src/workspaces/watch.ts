@@ -65,7 +65,7 @@ export class WorkspaceWatchers {
   /** A client listed this directory: when the main watcher is polling, watch it directly too. */
   touch(workspaceId: string, relDir: string): void {
     const w = this.#watched.get(workspaceId);
-    if (!w || w.main.mode !== "poll" || w.extra.has(relDir) || w.extra.size >= 64) return;
+    if (w?.main.mode !== "poll" || w.extra.has(relDir) || w.extra.size >= 64) return;
     const dir = path.join(w.root, relDir);
     const watcher = watchDirectory(dir, (ev) => this.#emit(workspaceId, w.root, relDir, ev), {
       recursive: false,

@@ -11,6 +11,7 @@ import { after, before, test } from "node:test";
 import type { ByteTransportFactory } from "@earendil-works/pi-client";
 import { PiClient } from "@earendil-works/pi-client";
 import { encodeCbor, encodeClientMessage, encodeFrame } from "@earendil-works/pi-protocol";
+import { rng } from "../../../test/helpers.ts";
 import { tmpDir } from "../../os/paths.ts";
 import { SessionHost } from "../../sessions/host.ts";
 import { memoryPair } from "../transport.ts";
@@ -47,19 +48,6 @@ after(async () => {
   await host.close();
   rmSync(root, { recursive: true, force: true, maxRetries: 5 });
 });
-
-function rng(seed: number) {
-  let s = seed >>> 0 || 1;
-  const next = () => {
-    s ^= s << 13;
-    s >>>= 0;
-    s ^= s >>> 17;
-    s ^= s << 5;
-    s >>>= 0;
-    return s / 0x1_0000_0000;
-  };
-  return { next, int: (n: number) => Math.floor(next() * n) };
-}
 
 const HELLO = encodeClientMessage({ type: "hello", version: 1 } as never);
 const LIST = encodeClientMessage({ type: "request", id: "r1", request: { command: "list" } } as never);

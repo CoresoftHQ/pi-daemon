@@ -1,8 +1,5 @@
-// Tailnet awareness (spec §6.5): additive, never authoritative. The daemon reads
-// `tailscale status --json` — the CLI is on PATH wherever Tailscale is installed, which spares
-// us the LocalAPI socket's per-platform paths — to learn its own tailnet address and name, and
-// to attach a peer's login to a connection for display or an optional allowlist. A token is
-// still required, always.
+// Tailnet awareness (spec §6.5): additive, never authoritative. Reads `tailscale status --json`
+// rather than the LocalAPI socket; a token is still required, always.
 
 import type { ExecResult } from "../os/service/exec.ts";
 import { exec } from "../os/service/exec.ts";

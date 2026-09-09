@@ -1,8 +1,5 @@
-// A Runner is one supervised `pi --mode rpc` process: one live session (spec §2.1).
-//
-// It owns the child, the JSONL framing, command correlation, and the lifecycle — graceful stop,
-// then tree-kill; crash detection with a stderr tail. It knows nothing about snapshots, clients,
-// or policy; `sessions` builds those on top.
+// A Runner is one supervised `pi --mode rpc` process (spec §2.1): the child, JSONL framing,
+// command correlation, and the lifecycle. Nothing about snapshots, clients, or policy.
 
 import type { ChildProcess } from "node:child_process";
 import { EventEmitter } from "node:events";
@@ -71,11 +68,7 @@ export class PiNotFoundError extends Error {
   }
 }
 
-/**
- * Every live runner, so that when this process exits — cleanly, by signal, or by a test
- * runner's force-exit — no pi process is orphaned. killTree is synchronous on both platforms,
- * which is what an exit hook needs.
- */
+/** Every live runner: an exit hook tree-kills them so no pi process is ever orphaned. */
 const liveRunners = new Set<Runner>();
 let exitHookInstalled = false;
 function installExitHook(): void {

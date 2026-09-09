@@ -68,10 +68,8 @@ export type ResolveInsideResult =
   | { ok: false; reason: ResolveInsideFailure };
 
 /**
- * Resolve a client-supplied relative path against a canonical workspace root, refusing
- * every way of leaving it: absolute paths, drive-relative paths (`C:foo`), UNC paths,
- * `..` traversal, null bytes, and symlinks whose target lies outside (spec §7.3).
- * Works for paths that do not exist yet, so it serves creates as well as reads.
+ * The boundary check for a client-supplied relative path (spec §7.3): every way of leaving the
+ * root is refused, symlinks included, and paths that do not exist yet are fine.
  */
 export function resolveInside(root: string, requested: string): ResolveInsideResult {
   if (requested.length === 0) return { ok: false, reason: "empty" };
@@ -103,12 +101,7 @@ export type SegmentProblem =
   | "trailing-dot-or-space"
   | "invalid-char";
 
-/**
- * Validate one path segment (a directory or file name) for portability. Enforced on every
- * platform by default — a worktree named `aux` works on Linux and breaks the Windows
- * collaborator who checks it out, which is exactly the kind of "works on my machine" this
- * daemon exists to prevent. `portable: false` relaxes to the current platform's rules.
- */
+/** Validate a name for portability on every platform by default; `portable: false` relaxes it. */
 export function validateSegment(name: string, options: { portable?: boolean } = {}): SegmentProblem | null {
   const portable = options.portable ?? true;
   if (name.length === 0) return "empty";

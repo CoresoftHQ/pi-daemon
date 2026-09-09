@@ -296,9 +296,8 @@ export function addWorkspaceRoutes(router: Router, options: WorkspaceRoutesOptio
     }
     const inm = ctx.req.headers["if-none-match"];
     if (
-      inm &&
       inm
-        .split(",")
+        ?.split(",")
         .map((s) => s.trim())
         .includes(meta.etag)
     ) {

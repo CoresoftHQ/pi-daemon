@@ -1,14 +1,5 @@
 // Projects pi RPC events into canonical SessionState plus transient Progress (spec §5.3).
-//
-// Rules learned in M0 against pi's own reducers:
-//   - snapshots are authoritative; progress is a hint the daemon never reduces itself
-//   - a user item has no lifecycle: it is announced with item_started and becomes authoritative
-//     through the next snapshot; item_finished admits only assistant and tool items
-//   - finished items go into the transcript; in-flight ones live only in progress until then
-//
-// History loaded from `get_entries` keeps pi's durable entry ids. Items created live are
-// minted `live:<n>`; they are unique within the session and stable for the runner's lifetime,
-// and a rehydrate replaces them with durable ids through a fresh authoritative snapshot.
+// The rules for user items, finished items, and live ids: docs/design.md, sessions/projector.
 
 import type { RpcEvent, RpcModel, RpcState } from "../runners/rpc.ts";
 import type {

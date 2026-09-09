@@ -25,11 +25,7 @@ export interface AtomicWriteOptions {
   mode?: number | undefined;
 }
 
-/**
- * Write via a temp file in the same directory, fsync, then rename over the target — so a
- * reader sees the old file or the new one, never a torn one. Preserves an existing file's
- * mode (an executable stays executable).
- */
+/** Temp file, fsync, rename: a reader sees the old file or the new one, never a torn one. */
 export function writeFileAtomicSync(
   file: string,
   data: string | Uint8Array,
@@ -106,11 +102,7 @@ export interface DirectoryWatcher {
   readonly mode: "native" | "poll";
 }
 
-/**
- * Watch a directory, debounced and coalesced, with a polling fallback when the native watcher
- * cannot be created (inotify exhaustion is the common case). The contract to callers is the
- * spec's: events may be coalesced or late, never wrong.
- */
+/** Watch a directory, debounced, with a polling fallback; events may be coalesced or late, never wrong. */
 export function watchDirectory(
   dir: string,
   onChange: (event: WatchEvent) => void,

@@ -9,8 +9,8 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import http from "node:http";
 import type net from "node:net";
 import path from "node:path";
-import type { TestContext } from "node:test";
 import { after, before, test } from "node:test";
+import { waitFor } from "../../../test/helpers.ts";
 import type { AccessControl } from "../../access/authenticate.ts";
 import { DeviceStore } from "../../access/devices.ts";
 import { ConnectTickets } from "../../access/tickets.ts";
@@ -147,16 +147,6 @@ async function call(
     body: (isJson && text ? JSON.parse(text) : {}) as Record<string, unknown>,
     bytes,
   };
-}
-
-async function waitFor<T>(t: TestContext, pred: () => T | undefined, ms = 8000): Promise<T> {
-  const deadline = Date.now() + ms;
-  for (;;) {
-    const v = pred();
-    if (v !== undefined) return v;
-    if (Date.now() > deadline) throw new Error(`timed out after ${ms}ms in ${t.name}`);
-    await new Promise((r) => setTimeout(r, 50));
-  }
 }
 
 const err = (r: Reply) => (r.body.error as { code: string } | undefined)?.code;

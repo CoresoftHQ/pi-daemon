@@ -289,12 +289,7 @@ export class Terminal {
     this.releasePty();
   }
 
-  /**
-   * Let go of the pseudo-terminal once the process is gone, whether we closed it or it exited
-   * on its own: otherwise the ConPTY (and its conhost) stays alive until the record is deleted.
-   * node-pty also keeps a pipe socket per ConPTY open after exit (one handle leaked per closed
-   * terminal, measured in M9); its public API has no close, so reach for the sockets.
-   */
+  /** Release the PTY once the process is gone; also closes the sockets node-pty leaks (docs/design.md). */
   releasePty(): void {
     try {
       this.#pty.kill();

@@ -1,12 +1,5 @@
-// The server half of pi-protocol (spec §4). Transport-neutral: every connection is a ByteDuplex,
-// so the same core serves a WebSocket, the local socket, and an in-memory pair in tests.
-//
-// Consequences of adopting pi's schemas, all deliberate (spec §4.3): nothing is added to the
-// message set; `cwd` is validated against the workspace resolver; commands we decline answer
-// not_implemented; frame limits are configuration. Leases: the wire `attach` carries no mode,
-// so every attachment over this surface is a shared lease — exclusivity is a client-local
-// notion pi-client enforces itself, and `locked` here reports an exclusive holder taken through
-// another surface.
+// The server half of pi-protocol (spec §4), transport-neutral over ByteDuplex. What adopting
+// pi's schemas implies, and why every lease here is shared: docs/design.md, serve/pi-protocol.
 
 import { randomUUID } from "node:crypto";
 import type {

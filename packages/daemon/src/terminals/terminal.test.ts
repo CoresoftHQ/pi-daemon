@@ -6,6 +6,7 @@
 import assert from "node:assert/strict";
 import type { TestContext } from "node:test";
 import { test } from "node:test";
+import { waitFor } from "../../test/helpers.ts";
 import { pidAlive } from "../os/spawn.ts";
 import type { Publish } from "./manager.ts";
 import {
@@ -19,16 +20,6 @@ import { loadPty, resetPtyCache } from "./pty.ts";
 const status = loadPty().status;
 if (!status.available && process.env.CI) throw new Error(`CI must have a PTY prebuild: ${status.error}`);
 const skip = status.available ? false : (status.error ?? "no PTY");
-
-async function waitFor<T>(t: TestContext, pred: () => T | undefined, ms = 15_000): Promise<T> {
-  const deadline = Date.now() + ms;
-  for (;;) {
-    const v = pred();
-    if (v !== undefined) return v;
-    if (Date.now() > deadline) throw new Error(`timed out after ${ms}ms in ${t.name}`);
-    await new Promise((r) => setTimeout(r, 25));
-  }
-}
 
 const node = (script: string) => [process.execPath, "-e", script];
 

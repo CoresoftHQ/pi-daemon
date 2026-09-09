@@ -66,10 +66,8 @@ export function resolveOrRefuse(root: string, rel: string): { canonical: string;
 }
 
 /**
- * Like `resolveOrRefuse`, but the final component is not followed — for deleting or renaming
- * a symlink *as a link*. The parent still has to resolve inside the root, and every syntactic
- * rule still applies; only "the link points outside" is allowed through, because removing such
- * a link is exactly what a client wants and touches nothing outside.
+ * Like `resolveOrRefuse` without following the final component: for deleting or renaming a
+ * symlink as a link. Only "the link points outside" is allowed through (docs/design.md).
  */
 export function resolveLinkOrRefuse(root: string, rel: string): { lexical: string; relative: string } {
   if (hasForbiddenCharacter(rel)) {
@@ -391,11 +389,7 @@ export interface RemoveOptions {
   recursive?: boolean | undefined;
 }
 
-/**
- * Delete. Directories need recursive; the root and .git are never deletable; a symlink is
- * removed as a link and never followed — which is why this works on the lexical path, not the
- * realpath: the realpath of `link` *is* its target.
- */
+/** Delete on the lexical path: links are removed as links; the root and .git are protected. */
 export function remove(root: string, rel: string, options: RemoveOptions = {}): { relative: string } {
   const { lexical, relative } = resolveLinkOrRefuse(root, rel);
   if (relative === ".git" || relative.startsWith(".git/"))
@@ -426,11 +420,7 @@ export function remove(root: string, rel: string, options: RemoveOptions = {}): 
   return { relative };
 }
 
-/**
- * Rename within the workspace. A plain rename: git sees delete + add until staged. Both ends
- * are lexical, so a link is moved as a link and a destination that is a link is replaced, not
- * written through.
- */
+/** Rename within the workspace on lexical paths; a plain rename, so git sees delete + add. */
 export function move(
   root: string,
   fromRel: string,

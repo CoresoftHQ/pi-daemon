@@ -1,8 +1,5 @@
-// The terminal byte stream (spec §5.5): `wss://…/v1/terminals/:id/stream`. Binary frames are
-// PTY bytes both ways; text frames are the small JSON control channel. On attach the server
-// sends a `snapshot` (the screen as VT sequences) and then live bytes, so a reconnecting phone
-// sees the terminal as it is. A client that cannot keep up is cut with a reason; the PTY read
-// loop never waits for anyone.
+// The terminal byte stream (spec §5.5): binary frames are PTY bytes, text frames are control,
+// a VT snapshot comes first, and a slow client is cut (docs/design.md, serve/v1/terminal-stream).
 
 import type http from "node:http";
 import type net from "node:net";

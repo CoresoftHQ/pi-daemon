@@ -28,13 +28,7 @@ export interface PathsEnv {
   PI_DAEMON_HOME?: string | undefined;
 }
 
-/**
- * Where the daemon keeps its own files on each platform:
- *   Windows  %LOCALAPPDATA%\pi-daemon
- *   macOS    ~/Library/Application Support/pi-daemon  (logs under ~/Library/Logs)
- *   Linux    $XDG_{DATA,CONFIG,STATE}_HOME/pi-daemon
- * PI_DAEMON_HOME overrides all four with one directory, for tests and for operators who want it.
- */
+/** The daemon's directories per platform (docs/design.md, os/paths); PI_DAEMON_HOME overrides all. */
 export function appDirs(
   name = "pi-daemon",
   env: PathsEnv = process.env,

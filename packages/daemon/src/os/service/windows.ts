@@ -1,9 +1,5 @@
-// Windows: a scheduled task at the current user's logon, needing no admin (spec §9).
-//
-// `schtasks.exe /SC ONLOGON` is denied for a standard user even with /RU and /IT, but the
-// ScheduledTasks PowerShell module registers a per-user AtLogOn trigger with a Limited principal
-// without elevation (verified in M1). Scripts go through -EncodedCommand so no argument ever
-// meets a shell's quoting rules. A boot-time Windows Service needs admin and is not provided here.
+// Windows: a scheduled task at the current user's logon via the ScheduledTasks module, since
+// schtasks /SC ONLOGON is denied to standard users (docs/design.md, os/service/windows).
 
 import { exec } from "./exec.ts";
 import type { ServiceDefinition, ServiceManager, ServiceStatus } from "./types.ts";
