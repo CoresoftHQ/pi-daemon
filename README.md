@@ -210,6 +210,8 @@ range. `1.0.0` is prepared there ([CHANGELOG](CHANGELOG.md)) and waits on the hu
 the 24-hour soak before it is tagged. Read [docs/operating.md](docs/operating.md) before exposing
 a daemon to a network.
 
+- [Writing a client](docs/clients.md) — pairing, both surfaces, the event stream, dialogs,
+  files, terminals, the contract package, and a complete `curl` session.
 - [Overview](docs/overview.md) — one page: how the daemon works and how clients integrate.
 - [Specification](docs/spec.md) — requirements, the runner architecture, both wire surfaces,
   the file API, terminals, access, safety, lifecycle, and the three operating systems.

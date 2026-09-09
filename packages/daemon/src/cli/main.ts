@@ -333,6 +333,7 @@ async function status(dirs: AppDirs, io: CliIo, json: boolean): Promise<number> 
         `daemon      ${s.name} (${s.daemonId})`,
         `listening   ${s.address}:${s.port} (${s.tls})${s.fingerprint ? `, fingerprint ${String(s.fingerprint).slice(0, 16)}…` : ""}`,
         `advertised  ${s.advertisedHost}`,
+        `local       ${s.localEndpoint} (pi-protocol, no token; control: ${s.controlEndpoint})`,
         `pi          ${pi.version ?? "not found"}${pi.path ? ` (${pi.path})` : ""}`,
         `live        ${s.sessions} sessions, ${s.terminals} terminals; ${s.workspaces} workspaces, ${s.devices} devices`,
         `service     ${service ? (service.installed ? `${service.state}` : "not installed") : "n/a"}`,

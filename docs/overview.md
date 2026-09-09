@@ -37,6 +37,9 @@ and TLS comes from `tailscale cert`, but reachability never grants anything.
 
 ## How clients integrate
 
+The call-by-call version of this section, with request and response shapes, is
+[clients.md](clients.md).
+
 **Pair, then read capabilities.** Scan the QR → `POST /v1/pair/redeem { code, deviceName,
 platform }` → `{ daemonId, deviceId, token, role, capabilities }`. Store the token per `daemonId`.
 `GET /v1/capabilities` tells you what this daemon can do (`features` / `absent`), which `pi`

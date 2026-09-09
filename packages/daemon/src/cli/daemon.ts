@@ -458,6 +458,8 @@ export async function startDaemon(options: StartOptions): Promise<RunningDaemon>
       address,
       port: config.port,
       advertisedHost,
+      localEndpoint: localEndpointPath(dirs.state),
+      controlEndpoint: control.endpoint,
       tls: tls?.mode ?? "off",
       fingerprint: tls?.fingerprint ?? null,
       startedAt,
