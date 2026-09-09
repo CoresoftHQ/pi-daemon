@@ -10,6 +10,26 @@ TypeScript types, and an OpenAPI 3.1 document you can feed to any generator; see
 daemon validates requests against the same schemas, so a shape that compiles is a shape the
 daemon accepts.
 
+## 0. The short version, in TypeScript
+
+`@coresoft-hq/pi-daemon-client` wraps everything below: typed methods for every route, an
+event stream that resumes and reconnects by itself, connect tickets for sockets, and a terminal
+attach helper. It runs in Node 22+ and browsers with no runtime dependencies.
+
+```ts
+import { PiDaemonClient } from "@coresoft-hq/pi-daemon-client";
+
+const paired = await PiDaemonClient.pair(baseUrl, { code, deviceName: "phone", platform: "ios" });
+const daemon = new PiDaemonClient({ baseUrl, token: paired.token });
+const session = await daemon.sessions.create();
+const events = daemon.events({ scopes: [`session:${session.id}`] });
+events.on("dialog.opened", (e) => daemon.dialogs.respond(e.payload.dialogId, { confirmed: true }));
+await daemon.sessions.prompt(session.id, "hello", { idempotencyKey: crypto.randomUUID() });
+```
+
+Its [README](../packages/client/README.md) has the rest. Everything else on this page is what
+that client does, for anyone writing one in another language.
+
 ## 1. Two surfaces, one state
 
 | | pi-protocol | `/v1` JSON |

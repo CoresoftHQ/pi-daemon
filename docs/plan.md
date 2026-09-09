@@ -507,7 +507,15 @@ Release; `packaging/` holds the Homebrew formula and the winget manifests; `rele
 builds and smoke-tests everything on a tag and publishes to npm when `NPM_PUBLISH` is set;
 CI gained a `package` job that installs the tarball into a fresh prefix, which is how the
 undeclared `typebox` dependency was caught. Publishing needs the npm org, the tap repository,
-and the first winget submission, all of which are the operator's.
+and the first winget submission, all of which are the operator's. **Client integration
+(2026-09-09)**: `docs/clients.md` (the call-by-call guide), CORS for browser clients from other
+origins (`cors.origins`, off by default), `workspaceId` optional on session create, the OpenAPI
+document as a release asset, and `packages/client` — `@coresoft-hq/pi-daemon-client`, a
+dependency-free TypeScript client for Node and browsers with typed methods for every route, an
+event stream that resumes and reconnects, connect tickets handled internally, and a terminal
+attach helper; six end-to-end tests against the composition root. Writing it caught nothing in
+the daemon and two things in the docs: a negative `since` is clamped, and Enter on a terminal
+is `\r`, both now stated.
 
 - Full CI matrix: three platforms, two Node minors, and the **oldest and newest supported `pi`**
   — the version range in `capabilities` is a promise and needs testing at both ends.

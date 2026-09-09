@@ -83,6 +83,9 @@ machine has none. The Homebrew formula and winget manifests live under `packagin
 
 ### For client developers
 
+- `@coresoft-hq/pi-daemon-client` 1.0.0: a dependency-free TypeScript client for Node and
+  browsers with typed methods for every route, an event stream that resumes and reconnects,
+  connect tickets handled for you, and a terminal attach helper.
 - `docs/clients.md` is the call-by-call guide; `pi-daemon.openapi.json` ships with every release.
 - `cors.origins` lets a web client served from another origin call the daemon; off by default,
   and tokens are still required.

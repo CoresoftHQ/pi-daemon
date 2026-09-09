@@ -211,7 +211,8 @@ the 24-hour soak before it is tagged. Read [docs/operating.md](docs/operating.md
 a daemon to a network.
 
 - [Writing a client](docs/clients.md) — pairing, both surfaces, the event stream, dialogs,
-  files, terminals, the contract package, and a complete `curl` session.
+  files, terminals, the contract package, and a complete `curl` session. TypeScript clients
+  start with [`@coresoft-hq/pi-daemon-client`](packages/client/README.md).
 - [Overview](docs/overview.md) — one page: how the daemon works and how clients integrate.
 - [Specification](docs/spec.md) — requirements, the runner architecture, both wire surfaces,
   the file API, terminals, access, safety, lifecycle, and the three operating systems.

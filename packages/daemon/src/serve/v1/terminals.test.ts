@@ -225,7 +225,7 @@ test("a client that cannot keep up is disconnected with a reason and the termina
     cols: 80,
     rows: 24,
     argv: node(
-      "const chunk = 'y'.repeat(1023) + '\\n'; let n = 0; const tick = () => { for (let i = 0; i < 64; i++) process.stdout.write(chunk); if (++n < 400) setImmediate(tick); else setTimeout(() => {}, 3000) }; tick()",
+      "const chunk = 'y'.repeat(1023) + '\\n'; let n = 0; const tick = () => { for (let i = 0; i < 64; i++) process.stdout.write(chunk); setImmediate(tick) }; tick()",
     ),
   });
   assert.equal(created.status, 201, JSON.stringify(created.body));
@@ -234,7 +234,7 @@ test("a client that cannot keep up is disconnected with a reason and the termina
   await waitFor(t, () => slow.frames.find((f) => f.type === "snapshot"));
   // stop reading: the server's per-connection buffer fills and it must cut us, not the PTY
   (slow.ws as unknown as { _socket: net.Socket })._socket.pause();
-  await new Promise((r) => setTimeout(r, 1500));
+  await new Promise((r) => setTimeout(r, 3000));
   (slow.ws as unknown as { _socket: net.Socket })._socket.resume();
   const closed = await slow.closed;
   assert.equal(closed.code, 1008, `expected slow-consumer cut, got ${closed.code} ${closed.reason}`);

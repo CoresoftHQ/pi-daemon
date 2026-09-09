@@ -12,12 +12,12 @@
     "packages/*"
   ],
   "scripts": {
-    "typecheck": "tsc -p packages/daemon --noEmit && tsc -p packages/contract --noEmit",
-    "test": "node --conditions=development --test --test-force-exit \"packages/daemon/src/**/*.test.ts\"",
+    "typecheck": "tsc -p packages/daemon --noEmit && tsc -p packages/contract --noEmit && tsc -p packages/client --noEmit",
+    "test": "node --conditions=development --test --test-force-exit \"packages/daemon/src/**/*.test.ts\" \"packages/client/src/**/*.test.ts\"",
     "check:boundaries": "node scripts/check-boundaries.mjs",
     "lint": "biome check .",
     "format": "biome format --write .",
-    "build": "tsc -b packages/contract packages/daemon",
+    "build": "tsc -b packages/contract packages/daemon packages/client",
     "verify": "npm run typecheck && npm run check:boundaries && npm run lint && npm run build && npm test"
   },
   "devDependencies": {
